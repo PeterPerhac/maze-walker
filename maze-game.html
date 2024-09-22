@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>3D Maze Game</title>
+    <title>3D Maze Game with Textured Floor and Ceiling</title>
     <style>
         body { margin: 0; overflow: hidden; }
     </style>
@@ -53,7 +53,7 @@
         );
 
         // Set the initial camera position above the floor
-        camera.position.y = 2;
+        camera.position.set(0, 2, 0);
 
         // Set up controls
         controls = new PointerLockControls(camera, document.body);
@@ -62,7 +62,7 @@
         scene.add(controls.getObject());
 
         // Add light (candle flame) to the controls object
-        const light = new THREE.PointLight(0xff6600, 1, 70); // Increased distance
+        const light = new THREE.PointLight(0xff6600, 1, 70); // Flame color and increased distance
         controls.getObject().add(light);
 
         // Create the renderer
@@ -70,12 +70,37 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // Load textures
+        const textureLoader = new THREE.TextureLoader();
+
+        // Floor texture
+        const floorTexture = textureLoader.load('floor.png');
+        floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+        floorTexture.repeat.set(10, 10); // Adjust repetition as needed
+        floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        floorTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
+
+        // Ceiling texture
+        const ceilingTexture = textureLoader.load('ceiling.jpg');
+        ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
+        ceilingTexture.repeat.set(10, 10); // Adjust repetition as needed
+        ceilingTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        ceilingTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
+
         // Create the floor
         const floorGeometry = new THREE.PlaneGeometry(100, 100);
-        const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 });
+        const floorMaterial = new THREE.MeshPhongMaterial({ map: floorTexture });
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
+
+        // Create the ceiling
+        const ceilingGeometry = new THREE.PlaneGeometry(100, 100);
+        const ceilingMaterial = new THREE.MeshPhongMaterial({ map: ceilingTexture });
+        const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.y = 10; // Adjust to match wall height
+        scene.add(ceiling);
 
         // Create walls
         const wallMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
@@ -107,14 +132,6 @@
         wall4.position.set(50, wallHeight / 2, 0);
         scene.add(wall4);
         objects.push(wall4);
-
-        // Create the ceiling
-        const ceilingGeometry = new THREE.PlaneGeometry(100, 100);
-        const ceilingMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 });
-        const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
-        ceiling.rotation.x = Math.PI / 2;
-        ceiling.position.y = wallHeight;
-        scene.add(ceiling);
 
         // Lock pointer on click
         document.addEventListener('click', function () {
@@ -209,7 +226,7 @@
 
             // Collision detection
             const cameraPosition = controls.getObject().position.clone();
-            const collisionSphereRadius = 2.5; // Increased radius
+            const collisionSphereRadius = 2.5; // Adjust as needed
             const sphere = new THREE.Sphere(cameraPosition, collisionSphereRadius);
             let collision = false;
 
