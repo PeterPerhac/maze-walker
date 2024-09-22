@@ -32,9 +32,16 @@
     let moveLeft = false;
     let moveRight = false;
 
+    let lottaLite = false;
+    let collisionDetection = true;
+    let superfast = false;
+
     let prevTime = performance.now();
     const velocity = new THREE.Vector3();
     const direction = new THREE.Vector3();
+
+    const defaultSpeed = 200;
+    const defaultLightRange = 60;
 
     init();
     animate();
@@ -62,7 +69,7 @@
         scene.add(controls.getObject());
 
         // Add light (candle flame) to the controls object
-        const light = new THREE.PointLight(0xff6600, 5, 50, 10); // Flame color and increased distance
+        const light = new THREE.PointLight(0xff6600, 5, defaultLightRange, 7); // Flame color and increased distance
         controls.getObject().add(light);
 
         // Create the renderer
@@ -76,14 +83,14 @@
         // Floor texture
         const floorTexture = textureLoader.load('floor.png');
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(40, 40); // Adjust repetition as needed
+        floorTexture.repeat.set(200, 200); // Adjust repetition as needed
         floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
         floorTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
 
         // Ceiling texture
         const ceilingTexture = textureLoader.load('ceiling.jpg');
         ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
-        ceilingTexture.repeat.set(20, 20); // Adjust repetition as needed
+        ceilingTexture.repeat.set(100, 100); // Adjust repetition as needed
         ceilingTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
         ceilingTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
 
@@ -95,14 +102,14 @@
         wallTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
 
         // Create the floor
-        const floorGeometry = new THREE.PlaneGeometry(200, 200);
+        const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
         const floorMaterial = new THREE.MeshPhongMaterial({ map: floorTexture });
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
 
         // Create the ceiling
-        const ceilingGeometry = new THREE.PlaneGeometry(200, 200);
+        const ceilingGeometry = new THREE.PlaneGeometry(1000, 1000);
         const ceilingMaterial = new THREE.MeshPhongMaterial({ map: ceilingTexture });
         const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
         ceiling.rotation.x = Math.PI / 2;
@@ -115,13 +122,13 @@
         const wallHeight = 10;
 
         // Outer walls (boundary)
-        createWall(0, wallHeight / 2, -100, 200, wallHeight, wallThickness, wallTexture); // Front wall
-        createWall(0, wallHeight / 2, 100, 200, wallHeight, wallThickness, wallTexture);  // Back wall
-        createWall(-100, wallHeight / 2, 0, wallThickness, wallHeight, 200, wallTexture); // Left wall
-        createWall(100, wallHeight / 2, 0, wallThickness, wallHeight, 200, wallTexture);  // Right wall
+        createWall(0, wallHeight / 2, -500, 1000, wallHeight, wallThickness, wallTexture); // Front wall
+        createWall(0, wallHeight / 2, 500, 1000, wallHeight, wallThickness, wallTexture);  // Back wall
+        createWall(-500, wallHeight / 2, 0, wallThickness, wallHeight, 1000, wallTexture); // Left wall
+        createWall(500, wallHeight / 2, 0, wallThickness, wallHeight, 1000, wallTexture);  // Right wall
 
         // Add random inner walls
-        const wallCount = 30; // Number of random walls to add
+        const wallCount = 2000; // Number of random walls to add
         for (let i = 0; i < wallCount; i++) {
             addRandomWall(wallMaterial, wallHeight);
         }
@@ -171,6 +178,18 @@
                 case 'KeyD':
                     moveRight = false;
                     break;
+
+                case 'Space':
+                    lottaLite = !lottaLite;
+                    break;
+
+                case 'KeyC':
+                    collisionDetection = !collisionDetection;
+                    break;
+
+                case 'KeyF':
+                    superfast = !superfast;
+                    break;
             }
         };
 
@@ -188,6 +207,11 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
+    let bobbingTime = 0; // Tracks bobbing progress
+    let bobbingSpeed = 20; // How fast the bobbing oscillates
+    let bobbingAmount = 0.25; // How much the camera bobs
+
+
     function animate() {
         requestAnimationFrame(animate);
 
@@ -196,15 +220,15 @@
             const delta = (time - prevTime) / 1000;
 
             // Apply friction
-            velocity.x -= velocity.x * 10.0 * delta;
-            velocity.z -= velocity.z * 10.0 * delta;
+            velocity.x -= velocity.x * 7.5 * delta;
+            velocity.z -= velocity.z * 7.5 * delta;
 
             // Calculate movement direction
             direction.z = Number(moveForward) - Number(moveBackward);
             direction.x = Number(moveRight) - Number(moveLeft);
             direction.normalize(); // Ensure consistent movement speed
 
-            const speed = 400.0;
+            const speed = superfast?1000:defaultSpeed;
 
             // Accelerate in the direction of movement
             if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
@@ -217,26 +241,34 @@
             controls.moveRight(-velocity.x * delta);
             controls.moveForward(-velocity.z * delta);
 
+            // Apply bobbing effect if moving
+            bobbingTime += delta * bobbingSpeed;
+            const bobbingOffset = Math.sin(bobbingTime) * bobbingAmount * (Math.min(velocity.length(), 8) / 8);
+            controls.getObject().position.y = 2 + bobbingOffset; // 2 is the default height
+
+            controls.getObject().children[0].distance = lottaLite?1000:defaultLightRange;
+
             // Collision detection
             const cameraPosition = controls.getObject().position.clone();
             const collisionSphereRadius = 1.5; // Adjust as needed
             const sphere = new THREE.Sphere(cameraPosition, collisionSphereRadius);
             let collision = false;
 
-            for (let i = 0; i < objects.length; i++) {
-                const boundingBox = new THREE.Box3().setFromObject(objects[i]);
-                if (boundingBox.intersectsSphere(sphere)) {
-                    collision = true;
-                    break;
+            if (collisionDetection) {
+                for (let i = 0; i < objects.length; i++) {
+                    const boundingBox = new THREE.Box3().setFromObject(objects[i]);
+                    if (boundingBox.intersectsSphere(sphere)) {
+                        collision = true;
+                        break;
+                    }
+                }
+
+                if (collision) {
+                    // Revert to the old position if collision detected
+                    controls.getObject().position.copy(oldPosition);
+                    velocity.set(0, 0, 0);
                 }
             }
-
-            if (collision) {
-                // Revert to the old position if collision detected
-                controls.getObject().position.copy(oldPosition);
-                velocity.set(0, 0, 0);
-            }
-
             prevTime = time;
         }
 
@@ -264,8 +296,8 @@
         const wall = new THREE.Mesh(wallGeometry, material);
 
         // Position within bounds
-        const x = Math.floor(Math.random() * 80) - 40; // Random x between -40 and 40
-        const z = Math.floor(Math.random() * 80) - 40; // Random z between -40 and 40
+        const x = Math.floor(Math.random() * 950) - 450; // Random x between -40 and 40
+        const z = Math.floor(Math.random() * 950) - 450; // Random z between -40 and 40
         wall.position.set(x, height / 2, z);
 
         // Simple overlap check (optional)
