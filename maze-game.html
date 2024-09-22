@@ -62,7 +62,7 @@
         scene.add(controls.getObject());
 
         // Add light (candle flame) to the controls object
-        const light = new THREE.PointLight(0xff6600, 1, 45, 7.5); // Flame color and increased distance
+        const light = new THREE.PointLight(0xff6600, 5, 50, 10); // Flame color and increased distance
         controls.getObject().add(light);
 
         // Create the renderer
@@ -95,14 +95,14 @@
         wallTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
 
         // Create the floor
-        const floorGeometry = new THREE.PlaneGeometry(100, 100);
+        const floorGeometry = new THREE.PlaneGeometry(200, 200);
         const floorMaterial = new THREE.MeshPhongMaterial({ map: floorTexture });
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
 
         // Create the ceiling
-        const ceilingGeometry = new THREE.PlaneGeometry(100, 100);
+        const ceilingGeometry = new THREE.PlaneGeometry(200, 200);
         const ceilingMaterial = new THREE.MeshPhongMaterial({ map: ceilingTexture });
         const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
         ceiling.rotation.x = Math.PI / 2;
@@ -111,17 +111,17 @@
 
         // Create walls
         const wallMaterial = new THREE.MeshPhongMaterial({ map: wallTexture });
-        const wallThickness = 1;
+        const wallThickness = 0.5;
         const wallHeight = 10;
 
         // Outer walls (boundary)
-        createWall(0, wallHeight / 2, -50, 100, wallHeight, wallThickness, wallTexture); // Front wall
-        createWall(0, wallHeight / 2, 50, 100, wallHeight, wallThickness, wallTexture);  // Back wall
-        createWall(-50, wallHeight / 2, 0, wallThickness, wallHeight, 100, wallTexture); // Left wall
-        createWall(50, wallHeight / 2, 0, wallThickness, wallHeight, 100, wallTexture);  // Right wall
+        createWall(0, wallHeight / 2, -100, 200, wallHeight, wallThickness, wallTexture); // Front wall
+        createWall(0, wallHeight / 2, 100, 200, wallHeight, wallThickness, wallTexture);  // Back wall
+        createWall(-100, wallHeight / 2, 0, wallThickness, wallHeight, 200, wallTexture); // Left wall
+        createWall(100, wallHeight / 2, 0, wallThickness, wallHeight, 200, wallTexture);  // Right wall
 
         // Add random inner walls
-        const wallCount = 10; // Number of random walls to add
+        const wallCount = 30; // Number of random walls to add
         for (let i = 0; i < wallCount; i++) {
             addRandomWall(wallMaterial, wallHeight);
         }
@@ -219,7 +219,7 @@
 
             // Collision detection
             const cameraPosition = controls.getObject().position.clone();
-            const collisionSphereRadius = 1.0; // Adjust as needed
+            const collisionSphereRadius = 1.5; // Adjust as needed
             const sphere = new THREE.Sphere(cameraPosition, collisionSphereRadius);
             let collision = false;
 
@@ -253,7 +253,7 @@
     }
 
     function addRandomWall(material, height) {
-        const wallThickness = 1;
+        const wallThickness = 0.2;
         const wallLength = Math.floor(Math.random() * 30) + 20; // Random length between 20 and 50
         const isVertical = Math.random() < 0.5;
 
