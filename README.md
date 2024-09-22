@@ -21,8 +21,9 @@ Move with WASD and your mouse
 
 Special (dev) features:
 - Space will toggle lights on or off
-- C will toggle collision detection
-- F will toggle Fast mode
+- C to toggle collision detection
+- F to toggle Fast mode
+- M to toggle wireframe (mesh)
 
 -----
 

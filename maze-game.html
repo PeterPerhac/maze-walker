@@ -35,6 +35,7 @@
     let lottaLite = false;
     let collisionDetection = true;
     let superfast = false;
+    let isWireframe = false;
 
     let prevTime = performance.now();
     const velocity = new THREE.Vector3();
@@ -75,6 +76,7 @@
         // Create the renderer
         renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
+
         document.body.appendChild(renderer.domElement);
 
         // Load textures
@@ -182,13 +184,19 @@
                 case 'Space':
                     lottaLite = !lottaLite;
                     break;
-
                 case 'KeyC':
                     collisionDetection = !collisionDetection;
                     break;
-
                 case 'KeyF':
                     superfast = !superfast;
+                    break;
+                case 'KeyM' :
+                    isWireframe = !isWireframe;
+                    scene.traverse(function(child) {
+                        if (child.isMesh) { // Check if the object is a mesh
+                            child.material.wireframe = isWireframe;
+                        }
+                    });
                     break;
             }
         };
