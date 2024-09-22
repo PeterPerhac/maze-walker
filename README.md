@@ -12,15 +12,21 @@ Common problem(s): You may be spawned too close to a wall and there fore unable 
 -----
 
 Run around and explore
+
 ![Lights are out, you only hold a candle in your hands](./site/maze-candlelit.jpg)
 
-- Move with WASD and your mouse
+## How to play
+
+Move with WASD and your mouse
+
+Special (dev) features:
 - Space will toggle lights on or off
 - C will toggle collision detection
 - F will toggle Fast mode
 
 -----
 
+Even with the lights on, you can't quite see to the end of the chamber  
 ![Even with the lights on, you can't quite see to the end of the chamber](./site/maze-lit.jpg)
 
 
