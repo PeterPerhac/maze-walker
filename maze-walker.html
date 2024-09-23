@@ -22,16 +22,17 @@
       }
     }
 
+
+
 </script>
 
 <!-- Main script -->
 <script type="module">
     import * as THREE from 'three';
     import {PointerLockControls} from 'three/examples/jsm/controls/PointerLockControls.js';
-    import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
-    import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
+    import {SVGLoader} from 'three/examples/jsm/loaders/SVGLoader.js';
 
-    let scene, camera, renderer, spotlightHelper;
+    let scene, camera, renderer;
     let controls;
     let objects = [];
 
@@ -72,8 +73,7 @@
             1000
         );
 
-        // Set the initial camera position above the floor
-        camera.position.set(0, 2, -180);
+        camera.position.set(0, wallHeight / 2 + 1, 150);
 
         // Set up controls
         controls = new PointerLockControls(camera, document.body);
@@ -82,17 +82,23 @@
         scene.add(controls.getObject());
 
         // Add light (candle flame) to the controls object
-        const light = new THREE.PointLight(0xffcc66, 3, defaultLightRange, 7);
+        const light = new THREE.PointLight(0xffcc66, 1, defaultLightRange, 3);
         controls.getObject().add(light);
 
-        const ambientLight = new THREE.AmbientLight(0xc660000, 0.075);
+        const ambientLight = new THREE.AmbientLight(0xaa0000, 0.05);
         scene.add(ambientLight);
 
-        const overheadSpotlight = new THREE.SpotLight(0x0033ff, 3, 0, Math.PI / 5, 0.1);
-        overheadSpotlight.position.set(0, wallHeight*3, -140);
+        const overheadSpotlight = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
+        overheadSpotlight.position.set(0, wallHeight * 3, -160);
         overheadSpotlight.target.position.set(0, 0, -140);
         scene.add(overheadSpotlight);
         scene.add(overheadSpotlight.target);
+
+        const overheadSpotlight2 = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
+        overheadSpotlight2.position.set(0, wallHeight * 3, -120);
+        overheadSpotlight2.target.position.set(0, 0, -140);
+        scene.add(overheadSpotlight2);
+        scene.add(overheadSpotlight2.target);
         // spotlightHelper = new THREE.SpotLightHelper(overheadSpotlight);
         // scene.add(spotlightHelper);
 
@@ -150,15 +156,14 @@
 
 
         const pictureWallTexture = textureLoader.load('img/picture-wall.png');
+        const tinaWallTexture = textureLoader.load('img/tina-wall.png');
         wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
         wallTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
         wallTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
 
-
-        // Add random inner walls
-        const mazeWallMaterial = new THREE.MeshPhongMaterial({map: wallTexture});
         const pictureWallMaterial = new THREE.MeshPhongMaterial({map: pictureWallTexture});
-        addRandomWall(pictureWallMaterial, wallHeight);
+        const tinaPictureWallMaterial = new THREE.MeshPhongMaterial({map: tinaWallTexture});
+        addMonument(pictureWallMaterial, tinaPictureWallMaterial, wallHeight);
 
 
         const loader = new SVGLoader();
@@ -172,17 +177,31 @@
                     if (color === '#ff0000' || color === 'red') return;
                     const shapes = SVGLoader.createShapes(path);
                     shapes.forEach((shape) => {
-                        const extrudeSettings = { depth: wallHeight, bevelEnabled: false };
-                        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-                        geometry.rotateX(-Math.PI / 2);
-                        geometry.scale(0.5, 1.0, 0.5);
-                        geometries.push(geometry);
+                        const points = shape.getPoints(2);
+                        const p1 = points[0];
+                        const p2 = points[1];
+
+                        const dx = p2.x - p1.x;
+                        const dz = p2.y - p1.y;
+                        const length = Math.sqrt(dx * dx + dz * dz);
+                        const angle = Math.atan2(dz, dx);
+
+                        const geometry = new THREE.BoxGeometry(length, wallHeight, 1); // Scale as needed
+                        const tex = wallTexture.clone();
+                        tex.repeat.set(length/7.5, 2); // Adjust repetition as needed
+                        const mat = new THREE.MeshPhongMaterial({map: tex});
+                        const wall = new THREE.Mesh(geometry, mat);
+
+                        wall.position.set(
+                            (p1.x + p2.x) / 2 - 265,
+                            wallHeight/2,
+                            -(p1.y + p2.y) / 2 + 130
+                        );
+                        wall.rotation.y = -angle;
+                        scene.add(wall);
+                        objects.push(wall)
                     });
                 });
-                const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries, true);
-                const maze = new THREE.Mesh(mergedGeometry, mazeWallMaterial);
-                maze.position.set(-132, 0, -10);
-                scene.add(maze);
             },
             function (xhr) {
                 console.log((xhr.loaded / xhr.total * 100) + '% loaded');
@@ -191,11 +210,6 @@
                 console.error('Error loading SVG:', error);
             }
         );
-
-      //  const wallCount = 1000; // Number of random walls to add
-      //  for (let i = 0; i < wallCount; i++) {
-      //      addRandomWall(mazeWallMaterial, pictureWallMaterial, wallHeight);
-      //  }
 
         // Lock pointer on click
         document.addEventListener('click', function () {
@@ -251,8 +265,8 @@
                     break;
                 case 'KeyF':
                     superfast = !superfast;
-                    bobbingSpeed = superfast?40:defaultBobbingSpeed;
-                    bobbingAmount = superfast?0.66:defaultBobbingAmount;
+                    bobbingSpeed = superfast ? 20 : defaultBobbingSpeed;
+                    bobbingAmount = superfast ? 0.33 : defaultBobbingAmount;
                     break;
                 case 'KeyM' :
                     isWireframe = !isWireframe;
@@ -320,15 +334,15 @@
             controls.getObject().position.y = 2 + bobbingOffset; // 2 is the default height
 
             controls.getObject().children[0].distance = lottaLite ? 0 : defaultLightRange;
-            scene.fog.density = lottaLite?0:defaultFogginess;
-
-            // Collision detection
-            const cameraPosition = controls.getObject().position.clone();
-            const collisionSphereRadius = 1.5; // Adjust as needed
-            const sphere = new THREE.Sphere(cameraPosition, collisionSphereRadius);
-            let collision = false;
+            scene.fog.density = lottaLite ? 0 : defaultFogginess;
 
             if (collisionDetection) {
+                // Collision detection
+                const cameraPosition = controls.getObject().position.clone();
+                const collisionSphereRadius = 1.5; // Adjust as needed
+                const sphere = new THREE.Sphere(cameraPosition, collisionSphereRadius);
+                let collision = false;
+
                 for (let i = 0; i < objects.length; i++) {
                     const boundingBox = new THREE.Box3().setFromObject(objects[i]);
                     if (boundingBox.intersectsSphere(sphere)) {
@@ -357,13 +371,17 @@
         objects.push(wall);
     }
 
-    function addRandomWall(material, height) {
+    function addMonument(material, tinaMaterial, height) {
         const wallThickness = 0.2;
         const wallLength = 10.0;
         const wall = new THREE.Mesh(new THREE.BoxGeometry(wallLength, height, wallThickness), material);
-        wall.position.set(0, height / 2, -135);
+        const wall2 = new THREE.Mesh(new THREE.BoxGeometry(wallLength, height, wallThickness), tinaMaterial);
+        wall.position.set(0, height / 2, -139.9);
+        wall2.position.set(0, height / 2, -140.1);
         scene.add(wall);
+        scene.add(wall2);
         objects.push(wall);
+        objects.push(wall2);
     }
 </script>
 </body>
