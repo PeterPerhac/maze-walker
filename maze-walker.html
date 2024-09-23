@@ -13,10 +13,12 @@
 <body>
 <!-- Import Map -->
 <script type="importmap">
-    {
+   {
       "imports": {
         "three": "https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.module.js",
-        "three/examples/jsm/controls/PointerLockControls.js": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/controls/PointerLockControls.js"
+        "three/examples/jsm/controls/PointerLockControls.js": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/controls/PointerLockControls.js",
+        "three/examples/jsm/loaders/SVGLoader.js": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/loaders/SVGLoader.js",
+        "three/examples/jsm/utils/BufferGeometryUtils.js": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/utils/BufferGeometryUtils.js"
       }
     }
 
@@ -26,8 +28,10 @@
 <script type="module">
     import * as THREE from 'three';
     import {PointerLockControls} from 'three/examples/jsm/controls/PointerLockControls.js';
+    import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
+    import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
-    let scene, camera, renderer;
+    let scene, camera, renderer, spotlightHelper;
     let controls;
     let objects = [];
 
@@ -45,8 +49,12 @@
     const velocity = new THREE.Vector3();
     const direction = new THREE.Vector3();
     const wallHeight = 10;
+    const wallThickness = 0.5;
     const defaultSpeed = 200;
-    const defaultLightRange = 60;
+    const defaultLightRange = 25;
+    const defaultBobbingSpeed = 20;
+    const defaultBobbingAmount = 0.25;
+    const defaultFogginess = 0.03;
 
     init();
     animate();
@@ -65,7 +73,7 @@
         );
 
         // Set the initial camera position above the floor
-        camera.position.set(0, 2, 0);
+        camera.position.set(0, 2, -180);
 
         // Set up controls
         controls = new PointerLockControls(camera, document.body);
@@ -74,8 +82,23 @@
         scene.add(controls.getObject());
 
         // Add light (candle flame) to the controls object
-        const light = new THREE.PointLight(0xff6600, 5, defaultLightRange, 7); // Flame color and increased distance
+        const light = new THREE.PointLight(0xffcc66, 3, defaultLightRange, 7);
         controls.getObject().add(light);
+
+        const ambientLight = new THREE.AmbientLight(0xc660000, 0.075);
+        scene.add(ambientLight);
+
+        const overheadSpotlight = new THREE.SpotLight(0x0033ff, 3, 0, Math.PI / 5, 0.1);
+        overheadSpotlight.position.set(0, wallHeight*3, -140);
+        overheadSpotlight.target.position.set(0, 0, -140);
+        scene.add(overheadSpotlight);
+        scene.add(overheadSpotlight.target);
+        // spotlightHelper = new THREE.SpotLightHelper(overheadSpotlight);
+        // scene.add(spotlightHelper);
+
+
+        scene.fog = new THREE.FogExp2(0x000000, defaultFogginess);
+
 
         // Create the renderer
         renderer = new THREE.WebGLRenderer();
@@ -87,23 +110,15 @@
         const textureLoader = new THREE.TextureLoader();
 
         // Floor texture
-        const floorTexture = textureLoader.load('floor.png');
+        const floorTexture = textureLoader.load('img/concrete.jpg');
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(200, 200); // Adjust repetition as needed
+        floorTexture.repeat.set(100, 100); // Adjust repetition as needed
         floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
         floorTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
 
-        // Ceiling texture
-        const ceilingTexture = textureLoader.load('ceiling.jpg');
-        ceilingTexture.wrapS = ceilingTexture.wrapT = THREE.RepeatWrapping;
-        ceilingTexture.repeat.set(100, 100); // Adjust repetition as needed
-        ceilingTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        ceilingTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
-
         // Wall texture
-        const wallTexture = textureLoader.load('wall.png');
+        const wallTexture = textureLoader.load('img/wall.png');
         wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
-        wallTexture.repeat.set(5, 1); // Adjust repetition as needed
         wallTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
         wallTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
 
@@ -116,27 +131,71 @@
 
         // Create the ceiling
         const ceilingGeometry = new THREE.PlaneGeometry(1000, 1000);
-        const ceilingMaterial = new THREE.MeshPhongMaterial({map: ceilingTexture});
+        const ceilingMaterial = new THREE.MeshPhongMaterial({map: floorTexture});
         const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
         ceiling.rotation.x = Math.PI / 2;
         ceiling.position.y = wallHeight;
         scene.add(ceiling);
 
-        // Create walls
-        const wallMaterial = new THREE.MeshPhongMaterial({map: wallTexture});
-        const wallThickness = 0.5;
+        const outsideWallTexture = wallTexture.clone()
+        outsideWallTexture.repeat.set(100, 1)
 
+        // Create walls
+        const outsideWallMaterial = new THREE.MeshPhongMaterial({map: outsideWallTexture});
         // Outer walls (boundary)
-        createWall(0, wallHeight / 2, -500, 1000, wallHeight, wallThickness, wallTexture); // Front wall
-        createWall(0, wallHeight / 2, 500, 1000, wallHeight, wallThickness, wallTexture);  // Back wall
-        createWall(-500, wallHeight / 2, 0, wallThickness, wallHeight, 1000, wallTexture); // Left wall
-        createWall(500, wallHeight / 2, 0, wallThickness, wallHeight, 1000, wallTexture);  // Right wall
+        createWall(0, wallHeight / 2, -500, 1000, wallHeight, wallThickness, outsideWallMaterial); // Front wall
+        createWall(0, wallHeight / 2, 500, 1000, wallHeight, wallThickness, outsideWallMaterial);  // Back wall
+        createWall(-500, wallHeight / 2, 0, wallThickness, wallHeight, 1000, outsideWallMaterial); // Left wall
+        createWall(500, wallHeight / 2, 0, wallThickness, wallHeight, 1000, outsideWallMaterial);  // Right wall
+
+
+        const pictureWallTexture = textureLoader.load('img/picture-wall.png');
+        wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        wallTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
+
 
         // Add random inner walls
-        const wallCount = 2000; // Number of random walls to add
-        for (let i = 0; i < wallCount; i++) {
-            addRandomWall(wallMaterial, wallHeight);
-        }
+        const mazeWallMaterial = new THREE.MeshPhongMaterial({map: wallTexture});
+        const pictureWallMaterial = new THREE.MeshPhongMaterial({map: pictureWallTexture});
+        addRandomWall(pictureWallMaterial, wallHeight);
+
+
+        const loader = new SVGLoader();
+        let geometries = [];
+        loader.load(
+            'mazes/big.svg',
+            function (data) {
+                const paths = data.paths;
+                paths.forEach((path) => {
+                    const color = path.userData.style.stroke;
+                    if (color === '#ff0000' || color === 'red') return;
+                    const shapes = SVGLoader.createShapes(path);
+                    shapes.forEach((shape) => {
+                        const extrudeSettings = { depth: wallHeight, bevelEnabled: false };
+                        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+                        geometry.rotateX(-Math.PI / 2);
+                        geometry.scale(0.5, 1.0, 0.5);
+                        geometries.push(geometry);
+                    });
+                });
+                const mergedGeometry = BufferGeometryUtils.mergeGeometries(geometries, true);
+                const maze = new THREE.Mesh(mergedGeometry, mazeWallMaterial);
+                maze.position.set(-132, 0, -10);
+                scene.add(maze);
+            },
+            function (xhr) {
+                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+            },
+            function (error) {
+                console.error('Error loading SVG:', error);
+            }
+        );
+
+      //  const wallCount = 1000; // Number of random walls to add
+      //  for (let i = 0; i < wallCount; i++) {
+      //      addRandomWall(mazeWallMaterial, pictureWallMaterial, wallHeight);
+      //  }
 
         // Lock pointer on click
         document.addEventListener('click', function () {
@@ -192,6 +251,8 @@
                     break;
                 case 'KeyF':
                     superfast = !superfast;
+                    bobbingSpeed = superfast?40:defaultBobbingSpeed;
+                    bobbingAmount = superfast?0.66:defaultBobbingAmount;
                     break;
                 case 'KeyM' :
                     isWireframe = !isWireframe;
@@ -219,12 +280,13 @@
     }
 
     let bobbingTime = 0; // Tracks bobbing progress
-    let bobbingSpeed = 20; // How fast the bobbing oscillates
-    let bobbingAmount = 0.25; // How much the camera bobs
+    let bobbingSpeed = defaultBobbingSpeed; // How fast the bobbing oscillates
+    let bobbingAmount = defaultBobbingAmount; // How much the camera bobs
 
 
     function animate() {
         requestAnimationFrame(animate);
+        // spotlightHelper.update();
 
         if (controls.isLocked === true) {
             const time = performance.now();
@@ -257,7 +319,8 @@
             const bobbingOffset = Math.sin(bobbingTime) * bobbingAmount * (Math.min(velocity.length(), 8) / 8);
             controls.getObject().position.y = 2 + bobbingOffset; // 2 is the default height
 
-            controls.getObject().children[0].distance = lottaLite ? 1000 : defaultLightRange;
+            controls.getObject().children[0].distance = lottaLite ? 0 : defaultLightRange;
+            scene.fog.density = lottaLite?0:defaultFogginess;
 
             // Collision detection
             const cameraPosition = controls.getObject().position.clone();
@@ -286,9 +349,8 @@
         renderer.render(scene, camera);
     }
 
-    function createWall(x, y, z, width, height, depth, wallTexture) {
+    function createWall(x, y, z, width, height, depth, wallMaterial) {
         const wallGeometry = new THREE.BoxGeometry(width, height, depth);
-        const wallMaterial = new THREE.MeshPhongMaterial({map: wallTexture});
         const wall = new THREE.Mesh(wallGeometry, wallMaterial);
         wall.position.set(x, y, z);
         scene.add(wall);
@@ -297,30 +359,9 @@
 
     function addRandomWall(material, height) {
         const wallThickness = 0.2;
-        const wallLength = Math.floor(Math.random() * 30) + 20; // Random length between 20 and 50
-        const isVertical = Math.random() < 0.5;
-
-        const wallGeometry = isVertical
-            ? new THREE.BoxGeometry(wallThickness, height, wallLength)
-            : new THREE.BoxGeometry(wallLength, height, wallThickness);
-
-        const wall = new THREE.Mesh(wallGeometry, material);
-
-        // Position within bounds
-        const x = Math.floor(Math.random() * 950) - 450; // Random x between -40 and 40
-        const z = Math.floor(Math.random() * 950) - 450; // Random z between -40 and 40
-        wall.position.set(x, height / 2, z);
-
-        // Simple overlap check (optional)
-        const wallBoundingBox = new THREE.Box3().setFromObject(wall);
-        for (let i = 0; i < objects.length; i++) {
-            const otherBoundingBox = new THREE.Box3().setFromObject(objects[i]);
-            if (wallBoundingBox.intersectsBox(otherBoundingBox)) {
-                // Overlaps with existing wall, skip adding this wall
-                return;
-            }
-        }
-
+        const wallLength = 10.0;
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(wallLength, height, wallThickness), material);
+        wall.position.set(0, height / 2, -135);
         scene.add(wall);
         objects.push(wall);
     }

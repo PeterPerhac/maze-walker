@@ -1,7 +1,7 @@
 # Maze Walker
 
 Simple 3D maze game with Three.js
-Single HTML page with all the code in it. Start an HTTP server from the directory where you cloned the game. Load the html page in your browser by visiting `localhost:<port>/maze-game.html`
+Single HTML page with all the code in it. Start an HTTP server from the directory where you cloned the game. Load the html page in your browser by visiting `localhost:<port>/maze-walker.html`
 
 ![Maze Walker](./site/maze-walker.gif)
 
