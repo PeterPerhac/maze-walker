@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <title>3D Maze Game with Textured Walls</title>
     <style>
-        body { margin: 0; overflow: hidden; }
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -16,12 +19,13 @@
         "three/examples/jsm/controls/PointerLockControls.js": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/controls/PointerLockControls.js"
       }
     }
-    </script>
+
+</script>
 
 <!-- Main script -->
 <script type="module">
     import * as THREE from 'three';
-    import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+    import {PointerLockControls} from 'three/examples/jsm/controls/PointerLockControls.js';
 
     let scene, camera, renderer;
     let controls;
@@ -40,7 +44,7 @@
     let prevTime = performance.now();
     const velocity = new THREE.Vector3();
     const direction = new THREE.Vector3();
-
+    const wallHeight = 10;
     const defaultSpeed = 200;
     const defaultLightRange = 60;
 
@@ -105,23 +109,22 @@
 
         // Create the floor
         const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
-        const floorMaterial = new THREE.MeshPhongMaterial({ map: floorTexture });
+        const floorMaterial = new THREE.MeshPhongMaterial({map: floorTexture});
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
 
         // Create the ceiling
         const ceilingGeometry = new THREE.PlaneGeometry(1000, 1000);
-        const ceilingMaterial = new THREE.MeshPhongMaterial({ map: ceilingTexture });
+        const ceilingMaterial = new THREE.MeshPhongMaterial({map: ceilingTexture});
         const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
         ceiling.rotation.x = Math.PI / 2;
-        ceiling.position.y = 10; // Adjust to match wall height
+        ceiling.position.y = wallHeight;
         scene.add(ceiling);
 
         // Create walls
-        const wallMaterial = new THREE.MeshPhongMaterial({ map: wallTexture });
+        const wallMaterial = new THREE.MeshPhongMaterial({map: wallTexture});
         const wallThickness = 0.5;
-        const wallHeight = 10;
 
         // Outer walls (boundary)
         createWall(0, wallHeight / 2, -500, 1000, wallHeight, wallThickness, wallTexture); // Front wall
@@ -192,8 +195,8 @@
                     break;
                 case 'KeyM' :
                     isWireframe = !isWireframe;
-                    scene.traverse(function(child) {
-                        if (child.isMesh) { // Check if the object is a mesh
+                    scene.traverse(function (child) {
+                        if (child.isMesh) {
                             child.material.wireframe = isWireframe;
                         }
                     });
@@ -236,7 +239,7 @@
             direction.x = Number(moveRight) - Number(moveLeft);
             direction.normalize(); // Ensure consistent movement speed
 
-            const speed = superfast?1000:defaultSpeed;
+            const speed = superfast ? 1000 : defaultSpeed;
 
             // Accelerate in the direction of movement
             if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
@@ -254,7 +257,7 @@
             const bobbingOffset = Math.sin(bobbingTime) * bobbingAmount * (Math.min(velocity.length(), 8) / 8);
             controls.getObject().position.y = 2 + bobbingOffset; // 2 is the default height
 
-            controls.getObject().children[0].distance = lottaLite?1000:defaultLightRange;
+            controls.getObject().children[0].distance = lottaLite ? 1000 : defaultLightRange;
 
             // Collision detection
             const cameraPosition = controls.getObject().position.clone();
@@ -285,7 +288,7 @@
 
     function createWall(x, y, z, width, height, depth, wallTexture) {
         const wallGeometry = new THREE.BoxGeometry(width, height, depth);
-        const wallMaterial = new THREE.MeshPhongMaterial({ map: wallTexture });
+        const wallMaterial = new THREE.MeshPhongMaterial({map: wallTexture});
         const wall = new THREE.Mesh(wallGeometry, wallMaterial);
         wall.position.set(x, y, z);
         scene.add(wall);
