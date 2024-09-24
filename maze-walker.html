@@ -231,6 +231,7 @@
         // Lock pointer on click
         document.addEventListener('click', function () {
             controls.lock();
+            backgroundMusic.play();
         });
 
         // Movement controls
@@ -324,7 +325,6 @@
         backgroundMusic.setBuffer(buffer);
         backgroundMusic.setLoop(true);
         backgroundMusic.setVolume(0.6);
-        backgroundMusic.play();
     });
 
     function animate() {
