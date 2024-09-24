@@ -57,6 +57,8 @@
     const defaultBobbingAmount = 0.25;
     const defaultFogginess = 0.03;
 
+    const eyeHeight = wallHeight / 2 + 1;
+
     init();
     animate();
 
@@ -73,7 +75,7 @@
             1000
         );
 
-        camera.position.set(0, wallHeight / 2 + 1, 150);
+        camera.position.set(0, eyeHeight, 150);
 
         // Set up controls
         controls = new PointerLockControls(camera, document.body);
@@ -85,7 +87,7 @@
         const light = new THREE.PointLight(0xffcc66, 1, defaultLightRange, 3);
         controls.getObject().add(light);
 
-        const ambientLight = new THREE.AmbientLight(0x880000, 0.1);
+        const ambientLight = new THREE.AmbientLight(0x550044, 0.1);
         scene.add(ambientLight);
 
         const overheadSpotlight = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
@@ -120,13 +122,27 @@
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
         floorTexture.repeat.set(100, 100); // Adjust repetition as needed
         floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        floorTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
+        floorTexture.minFilter = THREE.LinearMipmapLinearFilter;
 
-        // Wall texture
-        const wallTexture = textureLoader.load('img/wall.png');
-        wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
-        wallTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        wallTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
+        // Wall textures TODO REFACTOR
+        const wallTexture0 = textureLoader.load('img/wall-0.png');
+        wallTexture0.wrapS = wallTexture0.wrapT = THREE.RepeatWrapping;
+        wallTexture0.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        wallTexture0.minFilter = THREE.LinearMipmapLinearFilter;
+        const wallTexture1 = textureLoader.load('img/wall-1.png');
+        wallTexture1.wrapS = wallTexture1.wrapT = THREE.RepeatWrapping;
+        wallTexture1.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        wallTexture1.minFilter = THREE.LinearMipmapLinearFilter;
+        const wallTexture2 = textureLoader.load('img/wall-2.png');
+        wallTexture2.wrapS = wallTexture2.wrapT = THREE.RepeatWrapping;
+        wallTexture2.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        wallTexture2.minFilter = THREE.LinearMipmapLinearFilter;
+        const wallTexture3 = textureLoader.load('img/wall-3.png');
+        wallTexture3.wrapS = wallTexture3.wrapT = THREE.RepeatWrapping;
+        wallTexture3.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        wallTexture3.minFilter = THREE.LinearMipmapLinearFilter;
+
+        const wallTextures = [wallTexture0, wallTexture1, wallTexture2, wallTexture3];
 
         // Create the floor
         const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
@@ -143,7 +159,7 @@
         ceiling.position.y = wallHeight;
         scene.add(ceiling);
 
-        const outsideWallTexture = wallTexture.clone()
+        const outsideWallTexture = wallTexture0.clone()
         outsideWallTexture.repeat.set(100, 1)
 
         // Create walls
@@ -157,38 +173,39 @@
 
         const pictureWallTexture = textureLoader.load('img/picture-wall.png');
         const tinaWallTexture = textureLoader.load('img/tina-wall.png');
-        wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
-        wallTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        wallTexture.minFilter = THREE.LinearMipmapLinearFilter; // Enable mipmapping
+        const sadgeWallTexture = textureLoader.load('img/sadge-wall.png');
 
         const pictureWallMaterial = new THREE.MeshPhongMaterial({map: pictureWallTexture});
         const tinaPictureWallMaterial = new THREE.MeshPhongMaterial({map: tinaWallTexture});
-        addMonument(pictureWallMaterial, tinaPictureWallMaterial, wallHeight);
+        const sadgeMaterial = new THREE.MeshPhongMaterial({map: sadgeWallTexture});
+        addMonuments(pictureWallMaterial, tinaPictureWallMaterial, sadgeMaterial, wallHeight);
 
 
         const loader = new SVGLoader();
-        let geometries = [];
         loader.load(
             'mazes/big.svg',
             function (data) {
                 const paths = data.paths;
+                let idx = 0;
                 paths.forEach((path) => {
                     const color = path.userData.style.stroke;
                     if (color === '#ff0000' || color === 'red') return;
                     const shapes = SVGLoader.createShapes(path);
+                    idx = idx + 1;
+
                     shapes.forEach((shape) => {
                         const points = shape.getPoints(2);
                         const p1 = points[0];
                         const p2 = points[1];
-
                         const dx = p2.x - p1.x;
                         const dz = p2.y - p1.y;
                         const length = Math.sqrt(dx * dx + dz * dz);
                         const angle = Math.atan2(dz, dx);
 
                         const geometry = new THREE.BoxGeometry(length, wallHeight, 1); // Scale as needed
-                        const tex = wallTexture.clone();
-                        tex.repeat.set(length/7.5, 2); // Adjust repetition as needed
+                        const tex = wallTextures[idx % 4].clone();
+                        tex.repeat.set(length/wallHeight, 1);
+
                         const mat = new THREE.MeshPhongMaterial({map: tex});
                         const wall = new THREE.Mesh(geometry, mat);
 
@@ -199,7 +216,7 @@
                         );
                         wall.rotation.y = -angle;
                         scene.add(wall);
-                        objects.push(wall)
+                        objects.push(wall);
                     });
                 });
             },
@@ -282,7 +299,6 @@
         document.addEventListener('keydown', onKeyDown, false);
         document.addEventListener('keyup', onKeyUp, false);
 
-        // Handle window resize
         window.addEventListener('resize', onWindowResize, false);
     }
 
@@ -298,10 +314,21 @@
     let bobbingAmount = defaultBobbingAmount; // How much the camera bobs
 
 
+    const listener = new THREE.AudioListener();
+    camera.add(listener);
+
+    const backgroundMusic = new THREE.Audio(listener);
+    const audioLoader = new THREE.AudioLoader();
+
+    audioLoader.load('sfx/music.ogg', function(buffer) {
+        backgroundMusic.setBuffer(buffer);
+        backgroundMusic.setLoop(true);
+        backgroundMusic.setVolume(0.6);
+        backgroundMusic.play();
+    });
+
     function animate() {
         requestAnimationFrame(animate);
-        // spotlightHelper.update();
-
         if (controls.isLocked === true) {
             const time = performance.now();
             const delta = (time - prevTime) / 1000;
@@ -331,7 +358,7 @@
             // Apply bobbing effect if moving
             bobbingTime += delta * bobbingSpeed;
             const bobbingOffset = Math.sin(bobbingTime) * bobbingAmount * (Math.min(velocity.length(), 8) / 8);
-            controls.getObject().position.y = 2 + bobbingOffset; // 2 is the default height
+            controls.getObject().position.y = eyeHeight + bobbingOffset; // 2 is the default height
 
             controls.getObject().children[0].distance = lottaLite ? 0 : defaultLightRange;
             scene.fog.density = lottaLite ? 0 : defaultFogginess;
@@ -371,17 +398,21 @@
         objects.push(wall);
     }
 
-    function addMonument(material, tinaMaterial, height) {
+    function addMonuments(material, tinaMaterial, sadgeMaterial, height) {
         const wallThickness = 0.2;
         const wallLength = 10.0;
         const wall = new THREE.Mesh(new THREE.BoxGeometry(wallLength, height, wallThickness), material);
         const wall2 = new THREE.Mesh(new THREE.BoxGeometry(wallLength, height, wallThickness), tinaMaterial);
+        const wall3 = new THREE.Mesh(new THREE.BoxGeometry(wallLength, height, wallThickness), sadgeMaterial);
         wall.position.set(0, height / 2, -139.9);
         wall2.position.set(0, height / 2, -140.1);
+        wall3.position.set(241, height / 2, 100);
         scene.add(wall);
         scene.add(wall2);
+        scene.add(wall3);
         objects.push(wall);
         objects.push(wall2);
+        objects.push(wall3);
     }
 </script>
 </body>
