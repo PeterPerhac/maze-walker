@@ -24,6 +24,7 @@
 
 
 
+
 </script>
 
 <!-- Main script -->
@@ -51,29 +52,31 @@
     const direction = new THREE.Vector3();
     const wallSize = 10;
     const wallThickness = 0.5;
-    const defaultSpeed = 200;
+    const defaultSpeed = 150;
     const defaultLightRange = 25;
-    const defaultBobbingSpeed = 20;
-    const defaultBobbingAmount = 0.25;
+    const defaultBobbingSpeed = 12;
+    const defaultBobbingAmount = 0.5;
     const defaultFogginess = 0.03;
 
     const eyeHeight = wallSize / 2 + 1;
+    const mazeEndPoint = new THREE.Vector3(0, wallSize / 2, -140);
+
+    let isDropping = false;
+    let dropTargetY = eyeHeight;
+    let reachedEnd = false;
+    let inCloseProximityOfEnd = function () {
+        return false;
+    }
+    const dropSpeed = 500.0;
+
 
     init();
     animate();
 
     function init() {
-        // Create the scene
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000000); // Black background
-
-        // Create the camera
-        camera = new THREE.PerspectiveCamera(
-            75,
-            window.innerWidth / window.innerHeight,
-            1,
-            1000
-        );
+        scene.background = new THREE.Color(0x000000);
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
 
         camera.position.set(0, eyeHeight, 130); //player initial position
 
@@ -101,57 +104,51 @@
 
         scene.fog = new THREE.FogExp2(0x000000, defaultFogginess);
 
-
-        // Create the renderer
         renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
 
         document.body.appendChild(renderer.domElement);
 
-        // Load textures
         const textureLoader = new THREE.TextureLoader();
 
         // Floor texture
-        const floorTexture = textureLoader.load('img/concrete.jpg');
+        const floorTexture = textureLoader.load('img/ground_color.png');
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(100, 100); // Adjust repetition as needed
+        floorTexture.repeat.set(100, 100);
         floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
         floorTexture.minFilter = THREE.LinearMipmapLinearFilter;
+        const floorNormal = textureLoader.load('img/ground_normal.png');
+        floorNormal.wrapS = floorNormal.wrapT = THREE.RepeatWrapping;
+        floorNormal.repeat.set(100, 100);
+        floorNormal.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        floorNormal.minFilter = THREE.LinearMipmapLinearFilter;
+
 
         // Wall textures TODO REFACTOR
-        const wallTexture0 = textureLoader.load('img/wall_color.jpg');
+        const wallTexture0 = textureLoader.load('img/wall_color.png');
         wallTexture0.wrapS = wallTexture0.wrapT = THREE.RepeatWrapping;
         wallTexture0.anisotropy = renderer.capabilities.getMaxAnisotropy();
         wallTexture0.minFilter = THREE.LinearMipmapLinearFilter;
         const wallTextures = [wallTexture0, wallTexture0, wallTexture0, wallTexture0];
 
-        const wallNormal0 = textureLoader.load('img/wall_normal.jpg');
+        const wallEdgeTexture = textureLoader.load('img/wall_edge.png');
+        wallEdgeTexture.minFilter = THREE.LinearMipmapLinearFilter;
+        const wallEdgeTextureNormal = textureLoader.load('img/wall_edge_normal.png');
+        wallEdgeTextureNormal.minFilter = THREE.LinearMipmapLinearFilter;
+
+        const wallNormal0 = textureLoader.load('img/wall_normal.png');
         wallNormal0.wrapS = wallNormal0.wrapT = THREE.RepeatWrapping;
         wallNormal0.anisotropy = renderer.capabilities.getMaxAnisotropy();
         wallNormal0.minFilter = THREE.LinearMipmapLinearFilter;
         const wallNormals = [wallNormal0, wallNormal0, wallNormal0, wallNormal0];
 
 
-        const wallDisplacement0 = textureLoader.load('img/wall_displacement.jpg');
-        wallDisplacement0.wrapS = wallDisplacement0.wrapT = THREE.RepeatWrapping;
-        wallDisplacement0.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        wallDisplacement0.minFilter = THREE.LinearMipmapLinearFilter;
-        const wallDisplacements = [wallDisplacement0, wallDisplacement0, wallDisplacement0, wallDisplacement0];
-
         // Create the floor
         const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
-        const floorMaterial = new THREE.MeshStandardMaterial({map: floorTexture});
+        const floorMaterial = new THREE.MeshStandardMaterial({map: floorTexture, normalMap: floorNormal});
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
-
-        // Create the ceiling
-        const ceilingGeometry = new THREE.PlaneGeometry(1000, 1000);
-        const ceilingMaterial = new THREE.MeshStandardMaterial({map: floorTexture});
-        const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
-        ceiling.rotation.x = Math.PI / 2;
-        ceiling.position.y = wallSize;
-        scene.add(ceiling);
 
         const outsideWallTexture = wallTexture0.clone()
         outsideWallTexture.repeat.set(100, 1)
@@ -198,20 +195,20 @@
 
                         const geometry = new THREE.BoxGeometry(length, wallSize, 1);
                         const tex = wallTextures[idx % wallTextures.length].clone();
-                        tex.repeat.set(length/wallSize, 1);
+                        tex.repeat.set(length / wallSize, 1);
                         const nrm = wallNormals[idx % wallNormals.length].clone();
-                        nrm.repeat.set(length/wallSize, 1);
-                        const bumps = wallDisplacements[idx % wallDisplacements.length].clone();
-                        bumps.repeat.set(length/wallSize, 1);
+                        nrm.repeat.set(length / wallSize, 1);
 
-                        const faceMaterial = new THREE.MeshStandardMaterial({map: tex, normalMap: nrm, bumpMap: bumps});
-                        faceMaterial.wireframe = isWireframe;
-                        const sideMaterial = new THREE.MeshPhongMaterial({ color: 0xa98700 });
-                        const wall = new THREE.Mesh(geometry, [sideMaterial,sideMaterial,sideMaterial,sideMaterial,faceMaterial,faceMaterial]);
+                        const faceMaterial = new THREE.MeshStandardMaterial({map: tex, normalMap: nrm});
+                        const sideMaterial = new THREE.MeshStandardMaterial({
+                            map: wallEdgeTexture,
+                            normalMap: wallEdgeTextureNormal
+                        });
+                        const wall = new THREE.Mesh(geometry, [sideMaterial, sideMaterial, sideMaterial, sideMaterial, faceMaterial, faceMaterial]);
 
                         wall.position.set(
                             (p1.x + p2.x) / 2 - 265,
-                            wallSize/2,
+                            wallSize / 2,
                             -(p1.y + p2.y) / 2 + 130
                         );
                         wall.rotation.y = -angle;
@@ -231,12 +228,18 @@
 
         // Lock pointer on click
         document.addEventListener('click', function () {
-            controls.lock();
-            backgroundMusic.play();
+            if (!controls.isLocked) {
+                controls.lock();
+            }
+            if (!backgroundMusic.isPlaying) {
+                backgroundMusic.play();
+                footsteps.play();
+            }
         });
 
         // Movement controls
         const onKeyDown = function (event) {
+            if (isDropping) return;
             switch (event.code) {
                 case 'ArrowUp':
                 case 'KeyW':
@@ -258,6 +261,7 @@
         };
 
         const onKeyUp = function (event) {
+            if (isDropping) return;
             switch (event.code) {
                 case 'ArrowUp':
                 case 'KeyW':
@@ -276,7 +280,7 @@
                     moveRight = false;
                     break;
 
-                case 'Space':
+                case 'KeyL':
                     lottaLite = !lottaLite;
                     break;
                 case 'KeyC':
@@ -286,15 +290,28 @@
                     superfast = !superfast;
                     bobbingSpeed = superfast ? 20 : defaultBobbingSpeed;
                     bobbingAmount = superfast ? 0.33 : defaultBobbingAmount;
+                    footsteps.stop();
+                    footsteps.playbackRate = superfast ? 3.00 : 1.00;
+                    footsteps.play();
                     break;
                 case 'KeyM' :
                     isWireframe = !isWireframe;
                     scene.traverse(function (child) {
                         if (child.isMesh) {
-                            child.material.wireframe = isWireframe;
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach((material) => {
+                                    material.wireframe = isWireframe;
+                                });
+                            } else {
+                                child.material.wireframe = isWireframe;
+                            }
                         }
                     });
                     break;
+                case 'Space' :
+                    if (!isDropping && inCloseProximityOfEnd()) {
+                        initiateDrop();
+                    }
             }
         };
 
@@ -302,12 +319,21 @@
         document.addEventListener('keyup', onKeyUp, false);
 
         window.addEventListener('resize', onWindowResize, false);
+        inCloseProximityOfEnd = function () {
+            return mazeEndPoint.distanceTo(controls.getObject().position) < 10;
+        }
+    }
 
-        scene.traverse(function (child) {
-            if (child.isMesh) {
-                child.material.wireframe = isWireframe;
-            }
-        });
+    function initiateDrop() {
+        isDropping = true;
+        footsteps.stop();
+        controls.getObject().children[0].rotation.x = THREE.MathUtils.degToRad(89);
+        moveLeft = false;
+        moveBackward = false;
+        moveRight = false;
+        moveForward = false;
+        dropTargetY = camera.position.y - 700;
+
     }
 
     function onWindowResize() {
@@ -326,71 +352,104 @@
     camera.add(listener);
 
     const backgroundMusic = new THREE.Audio(listener);
+    const footsteps = new THREE.Audio(listener);
+    const switchSound = new THREE.Audio(listener);
+
     const audioLoader = new THREE.AudioLoader();
 
-    audioLoader.load('sfx/music.ogg', function(buffer) {
+    audioLoader.load('sfx/music.ogg', function (buffer) {
         backgroundMusic.setBuffer(buffer);
         backgroundMusic.setLoop(true);
         backgroundMusic.setVolume(0.3);
     });
+    audioLoader.load('sfx/footsteps.ogg', function (buffer) {
+        footsteps.setBuffer(buffer);
+        footsteps.setLoop(true);
+        footsteps.setVolume(0.0);
+    });
+    audioLoader.load('sfx/switch.ogg', function (buffer) {
+        switchSound.setBuffer(buffer);
+        switchSound.setLoop(false);
+        switchSound.setVolume(1.0);
+    });
 
     function animate() {
         requestAnimationFrame(animate);
-        if (controls.isLocked === true) {
-            const time = performance.now();
-            const delta = (time - prevTime) / 1000;
 
-            // Apply friction
-            velocity.x -= velocity.x * 7.5 * delta;
-            velocity.z -= velocity.z * 7.5 * delta;
 
-            // Calculate movement direction
-            direction.z = Number(moveForward) - Number(moveBackward);
-            direction.x = Number(moveRight) - Number(moveLeft);
-            direction.normalize(); // Ensure consistent movement speed
+        function checkReachedEnd() {
+            if (reachedEnd) return true;
+            reachedEnd = inCloseProximityOfEnd();
+            if (reachedEnd) {
+                switchSound.play();
+            }
+            return reachedEnd;
+        }
 
-            const speed = superfast ? 1000 : defaultSpeed;
+        const time = performance.now();
+        const delta = (time - prevTime) / 1000;
+        if (!isDropping) {
+            if (controls.isLocked === true) {
+                // Apply friction
+                velocity.x -= velocity.x * 7.5 * delta;
+                velocity.z -= velocity.z * 7.5 * delta;
 
-            // Accelerate in the direction of movement
-            if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
-            if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
+                // Calculate movement direction
+                direction.z = Number(moveForward) - Number(moveBackward);
+                direction.x = Number(moveRight) - Number(moveLeft);
+                direction.normalize(); // Ensure consistent movement speed
 
-            // Save the old position
-            const oldPosition = controls.getObject().position.clone();
+                const speed = superfast ? 1000 : defaultSpeed;
 
-            // Apply movement
-            controls.moveRight(-velocity.x * delta);
-            controls.moveForward(-velocity.z * delta);
+                // Accelerate in the direction of movement
+                if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
+                if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
 
-            // Apply bobbing effect if moving
-            bobbingTime += delta * bobbingSpeed;
-            const bobbingOffset = Math.sin(bobbingTime) * bobbingAmount * (Math.min(velocity.length(), 8) / 8);
-            controls.getObject().position.y = eyeHeight + bobbingOffset; // 2 is the default height
+                // Save the old position
+                const oldPosition = controls.getObject().position.clone();
 
-            controls.getObject().children[0].distance = lottaLite ? 0 : defaultLightRange;
-            scene.fog.density = lottaLite ? 0 : defaultFogginess;
+                // Apply movement
+                controls.moveRight(-velocity.x * delta);
+                controls.moveForward(-velocity.z * delta);
 
-            if (collisionDetection) {
-                const cameraPosition = controls.getObject().position.clone();
-                const collisionSphereRadius = 1.5; // Adjust as needed
-                const sphere = new THREE.Sphere(cameraPosition, collisionSphereRadius);
-                let collision = false;
+                // Apply bobbing effect if moving
+                bobbingTime += delta * bobbingSpeed;
+                const bobbingOffset = Math.sin(bobbingTime) * bobbingAmount * (Math.min(velocity.length(), 8) / 8);
+                controls.getObject().position.y = eyeHeight + bobbingOffset;
 
-                for (let i = 0; i < objects.length; i++) {
-                    const boundingBox = new THREE.Box3().setFromObject(objects[i]);
-                    if (boundingBox.intersectsSphere(sphere)) {
-                        collision = true;
-                        break;
+                checkReachedEnd();
+                const lightuptheshow = lottaLite || reachedEnd;
+                controls.getObject().children[0].distance = lightuptheshow ? 0 : defaultLightRange;
+                scene.fog.density = lightuptheshow ? 0 : defaultFogginess;
+
+                footsteps.setVolume(Math.min(0.5, Math.max(0, velocity.length()))); //don't make the footsteps sound ever louder than 0.5
+
+                if (collisionDetection) {
+                    const cameraPosition = controls.getObject().position.clone();
+                    const collisionSphereRadius = 2;
+                    const sphere = new THREE.Sphere(cameraPosition, collisionSphereRadius);
+                    let collision = false;
+
+                    for (let i = 0; i < objects.length; i++) {
+                        const boundingBox = new THREE.Box3().setFromObject(objects[i]);
+                        if (boundingBox.intersectsSphere(sphere)) {
+                            collision = true;
+                            break;
+                        }
+                    }
+
+                    if (collision) {
+                        // Revert to the old position if collision detected
+                        controls.getObject().position.copy(oldPosition);
+                        velocity.set(0, 0, 0);
                     }
                 }
-
-                if (collision) {
-                    // Revert to the old position if collision detected
-                    controls.getObject().position.copy(oldPosition);
-                    velocity.set(0, 0, 0);
-                }
+                prevTime = time;
             }
-            prevTime = time;
+        } else {
+            if (camera.position.y > dropTargetY) {
+                camera.position.y -= dropSpeed * delta / 1000;
+            }
         }
 
         renderer.render(scene, camera);
