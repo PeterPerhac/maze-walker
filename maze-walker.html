@@ -25,6 +25,9 @@
 
 
 
+
+
+
 </script>
 
 <!-- Main script -->
@@ -53,9 +56,9 @@
     const wallSize = 10;
     const wallThickness = 0.5;
     const defaultSpeed = 150;
-    const defaultLightRange = 25;
+    const defaultLightRange = 40;
     const defaultBobbingSpeed = 12;
-    const defaultBobbingAmount = 0.5;
+    const defaultBobbingAmount = 0.6;
     const defaultFogginess = 0.03;
 
     const eyeHeight = wallSize / 2 + 1;
@@ -67,7 +70,8 @@
     let inCloseProximityOfEnd = function () {
         return false;
     }
-    const dropSpeed = 500.0;
+    let dropSpeed = 0;
+    const maxDropDepth = 700.0;
 
 
     init();
@@ -78,16 +82,16 @@
         scene.background = new THREE.Color(0x000000);
         camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
 
-        camera.position.set(0, eyeHeight, 130); //player initial position
+        camera.position.set(-20, eyeHeight, 85); //player initial position
 
         controls = new PointerLockControls(camera, document.body);
         scene.add(controls.getObject());
 
         // Add light (candle flame) to the controls object
-        const light = new THREE.PointLight(0xffcc66, 1, defaultLightRange, 3);
+        const light = new THREE.PointLight(0xffcc66, 1, defaultLightRange, 1);
         controls.getObject().add(light);
 
-        const ambientLight = new THREE.AmbientLight(0x550044, 0.1);
+        const ambientLight = new THREE.AmbientLight(0x550044, 0.4);
         scene.add(ambientLight);
 
         const overheadSpotlight = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
@@ -161,15 +165,17 @@
         createWall(-500, wallSize / 2, 0, wallThickness, wallSize, 1000, outsideWallMaterial); // Left wall
         createWall(500, wallSize / 2, 0, wallThickness, wallSize, 1000, outsideWallMaterial);  // Right wall
 
-
-        const pictureWallTexture = textureLoader.load('img/picture-wall.jpg');
-        const tinaWallTexture = textureLoader.load('img/tina-wall.jpg');
-        const sadgeWallTexture = textureLoader.load('img/sadge-wall.jpg');
-
-        const pictureWallMaterial = new THREE.MeshStandardMaterial({map: pictureWallTexture});
-        const tinaPictureWallMaterial = new THREE.MeshStandardMaterial({map: tinaWallTexture});
-        const sadgeMaterial = new THREE.MeshStandardMaterial({map: sadgeWallTexture});
-        addMonuments(pictureWallMaterial, tinaPictureWallMaterial, sadgeMaterial, wallSize);
+        addMonuments(
+            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall.jpg')}),
+            new THREE.MeshStandardMaterial({map: textureLoader.load('img/tina-wall.jpg')}),
+            new THREE.MeshStandardMaterial({map: textureLoader.load('img/sadge-wall.jpg')}),
+            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-sofia.jpg')}),
+            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-sofia-daddy.jpg')}),
+            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-mummy.jpg')}),
+            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-ellie.jpg')}),
+            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-pito.jpg')}),
+            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-tina-mad.jpg')})
+        );
 
 
         const loader = new SVGLoader();
@@ -260,6 +266,20 @@
             }
         };
 
+        const updateMaterialWireframe = function (){
+            scene.traverse(function (child) {
+                if (child.isMesh) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach((material) => {
+                            material.wireframe = isWireframe;
+                        });
+                    } else {
+                        child.material.wireframe = isWireframe;
+                    }
+                }
+            });
+        };
+
         const onKeyUp = function (event) {
             if (isDropping) return;
             switch (event.code) {
@@ -283,6 +303,14 @@
                 case 'KeyL':
                     lottaLite = !lottaLite;
                     break;
+                case 'KeyR':
+                    lottaLite = false;
+                    collisionDetection = true;
+                    superfast = false;
+                    isWireframe = false;
+                    reachedEnd = false;
+                    updateMaterialWireframe();
+                    break;
                 case 'KeyC':
                     collisionDetection = !collisionDetection;
                     break;
@@ -296,21 +324,14 @@
                     break;
                 case 'KeyM' :
                     isWireframe = !isWireframe;
-                    scene.traverse(function (child) {
-                        if (child.isMesh) {
-                            if (Array.isArray(child.material)) {
-                                child.material.forEach((material) => {
-                                    material.wireframe = isWireframe;
-                                });
-                            } else {
-                                child.material.wireframe = isWireframe;
-                            }
-                        }
-                    });
+                    updateMaterialWireframe();
                     break;
                 case 'Space' :
                     if (!isDropping && inCloseProximityOfEnd()) {
                         initiateDrop();
+                    } else {
+                        const pos = controls.getObject().position;
+                        console.log("x=", pos.x, ", z=", pos.z);
                     }
             }
         };
@@ -332,7 +353,8 @@
         moveBackward = false;
         moveRight = false;
         moveForward = false;
-        dropTargetY = camera.position.y - 700;
+        dropSpeed = 10;
+        dropTargetY = camera.position.y - maxDropDepth;
 
     }
 
@@ -448,6 +470,7 @@
             }
         } else {
             if (camera.position.y > dropTargetY) {
+                dropSpeed = dropSpeed * 1.01;
                 camera.position.y -= dropSpeed * delta / 1000;
             }
         }
@@ -463,21 +486,24 @@
         objects.push(wall);
     }
 
-    function addMonuments(material, tinaMaterial, sadgeMaterial, height) {
-        const wallThickness = 0.2;
-        const wallLength = 10.0;
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(wallLength, height, wallThickness), material);
-        const wall2 = new THREE.Mesh(new THREE.BoxGeometry(wallLength, height, wallThickness), tinaMaterial);
-        const wall3 = new THREE.Mesh(new THREE.BoxGeometry(wallLength, height, wallThickness), sadgeMaterial);
-        wall.position.set(0, height / 2, -139.9);
-        wall2.position.set(0, height / 2, -140.1);
-        wall3.position.set(241, height / 2, 100);
-        scene.add(wall);
-        scene.add(wall2);
-        scene.add(wall3);
-        objects.push(wall);
-        objects.push(wall2);
-        objects.push(wall3);
+    function addMonuments(material, tinaMaterial, sadgeMaterial, sofiaMat, sofiDaddyMat, mummyMat, ellieMat, pitoMat, madTina) {
+        function addMonument(mat, x, z) {
+            const wallThickness = 0.2;
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(wallSize, wallSize, wallThickness), mat);
+            wall.position.set(x, wallSize / 2, z);
+            scene.add(wall);
+            objects.push(wall);
+        }
+
+        addMonument(material, 0, -139.9);
+        addMonument(tinaMaterial, 0, -140.1);
+        addMonument(sadgeMaterial, 241, 100);
+        addMonument(sofiaMat, -190, -159);
+        addMonument(sofiDaddyMat, 66, 14.9);
+        addMonument(mummyMat, -110, -306);
+        addMonument(pitoMat, 80, -399);
+        addMonument(ellieMat, -158, -254);
+        addMonument(madTina, -15, 95);
     }
 </script>
 </body>
