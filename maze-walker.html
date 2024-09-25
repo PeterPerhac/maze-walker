@@ -112,12 +112,12 @@
         const textureLoader = new THREE.TextureLoader();
 
         // Floor texture
-        const floorTexture = textureLoader.load('img/ground_color.png');
+        const floorTexture = textureLoader.load('img/ground_color.jpg');
         floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
         floorTexture.repeat.set(100, 100);
         floorTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
         floorTexture.minFilter = THREE.LinearMipmapLinearFilter;
-        const floorNormal = textureLoader.load('img/ground_normal.png');
+        const floorNormal = textureLoader.load('img/ground_normal.jpg');
         floorNormal.wrapS = floorNormal.wrapT = THREE.RepeatWrapping;
         floorNormal.repeat.set(100, 100);
         floorNormal.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -125,18 +125,18 @@
 
 
         // Wall textures TODO REFACTOR
-        const wallTexture0 = textureLoader.load('img/wall_color.png');
+        const wallTexture0 = textureLoader.load('img/wall_color.jpg');
         wallTexture0.wrapS = wallTexture0.wrapT = THREE.RepeatWrapping;
         wallTexture0.anisotropy = renderer.capabilities.getMaxAnisotropy();
         wallTexture0.minFilter = THREE.LinearMipmapLinearFilter;
         const wallTextures = [wallTexture0, wallTexture0, wallTexture0, wallTexture0];
 
-        const wallEdgeTexture = textureLoader.load('img/wall_edge.png');
+        const wallEdgeTexture = textureLoader.load('img/wall_edge.jpg');
         wallEdgeTexture.minFilter = THREE.LinearMipmapLinearFilter;
-        const wallEdgeTextureNormal = textureLoader.load('img/wall_edge_normal.png');
+        const wallEdgeTextureNormal = textureLoader.load('img/wall_edge_normal.jpg');
         wallEdgeTextureNormal.minFilter = THREE.LinearMipmapLinearFilter;
 
-        const wallNormal0 = textureLoader.load('img/wall_normal.png');
+        const wallNormal0 = textureLoader.load('img/wall_normal.jpg');
         wallNormal0.wrapS = wallNormal0.wrapT = THREE.RepeatWrapping;
         wallNormal0.anisotropy = renderer.capabilities.getMaxAnisotropy();
         wallNormal0.minFilter = THREE.LinearMipmapLinearFilter;
@@ -162,9 +162,9 @@
         createWall(500, wallSize / 2, 0, wallThickness, wallSize, 1000, outsideWallMaterial);  // Right wall
 
 
-        const pictureWallTexture = textureLoader.load('img/picture-wall.png');
-        const tinaWallTexture = textureLoader.load('img/tina-wall.png');
-        const sadgeWallTexture = textureLoader.load('img/sadge-wall.png');
+        const pictureWallTexture = textureLoader.load('img/picture-wall.jpg');
+        const tinaWallTexture = textureLoader.load('img/tina-wall.jpg');
+        const sadgeWallTexture = textureLoader.load('img/sadge-wall.jpg');
 
         const pictureWallMaterial = new THREE.MeshStandardMaterial({map: pictureWallTexture});
         const tinaPictureWallMaterial = new THREE.MeshStandardMaterial({map: tinaWallTexture});
