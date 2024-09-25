@@ -49,7 +49,7 @@
     let prevTime = performance.now();
     const velocity = new THREE.Vector3();
     const direction = new THREE.Vector3();
-    const wallHeight = 10;
+    const wallSize = 10;
     const wallThickness = 0.5;
     const defaultSpeed = 200;
     const defaultLightRange = 25;
@@ -57,7 +57,7 @@
     const defaultBobbingAmount = 0.25;
     const defaultFogginess = 0.03;
 
-    const eyeHeight = wallHeight / 2 + 1;
+    const eyeHeight = wallSize / 2 + 1;
 
     init();
     animate();
@@ -75,12 +75,9 @@
             1000
         );
 
-        camera.position.set(0, eyeHeight, 150);
+        camera.position.set(0, eyeHeight, 130); //player initial position
 
-        // Set up controls
         controls = new PointerLockControls(camera, document.body);
-
-        // Add controls to the scene
         scene.add(controls.getObject());
 
         // Add light (candle flame) to the controls object
@@ -91,19 +88,16 @@
         scene.add(ambientLight);
 
         const overheadSpotlight = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
-        overheadSpotlight.position.set(0, wallHeight * 3, -160);
+        overheadSpotlight.position.set(0, wallSize * 3, -160);
         overheadSpotlight.target.position.set(0, 0, -140);
         scene.add(overheadSpotlight);
         scene.add(overheadSpotlight.target);
 
         const overheadSpotlight2 = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
-        overheadSpotlight2.position.set(0, wallHeight * 3, -120);
+        overheadSpotlight2.position.set(0, wallSize * 3, -120);
         overheadSpotlight2.target.position.set(0, 0, -140);
         scene.add(overheadSpotlight2);
         scene.add(overheadSpotlight2.target);
-        // spotlightHelper = new THREE.SpotLightHelper(overheadSpotlight);
-        // scene.add(spotlightHelper);
-
 
         scene.fog = new THREE.FogExp2(0x000000, defaultFogginess);
 
@@ -125,60 +119,60 @@
         floorTexture.minFilter = THREE.LinearMipmapLinearFilter;
 
         // Wall textures TODO REFACTOR
-        const wallTexture0 = textureLoader.load('img/wall-0.png');
+        const wallTexture0 = textureLoader.load('img/wall_color.jpg');
         wallTexture0.wrapS = wallTexture0.wrapT = THREE.RepeatWrapping;
         wallTexture0.anisotropy = renderer.capabilities.getMaxAnisotropy();
         wallTexture0.minFilter = THREE.LinearMipmapLinearFilter;
-        const wallTexture1 = textureLoader.load('img/wall-1.png');
-        wallTexture1.wrapS = wallTexture1.wrapT = THREE.RepeatWrapping;
-        wallTexture1.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        wallTexture1.minFilter = THREE.LinearMipmapLinearFilter;
-        const wallTexture2 = textureLoader.load('img/wall-2.png');
-        wallTexture2.wrapS = wallTexture2.wrapT = THREE.RepeatWrapping;
-        wallTexture2.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        wallTexture2.minFilter = THREE.LinearMipmapLinearFilter;
-        const wallTexture3 = textureLoader.load('img/wall-3.png');
-        wallTexture3.wrapS = wallTexture3.wrapT = THREE.RepeatWrapping;
-        wallTexture3.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        wallTexture3.minFilter = THREE.LinearMipmapLinearFilter;
+        const wallTextures = [wallTexture0, wallTexture0, wallTexture0, wallTexture0];
 
-        const wallTextures = [wallTexture0, wallTexture1, wallTexture2, wallTexture3];
+        const wallNormal0 = textureLoader.load('img/wall_normal.jpg');
+        wallNormal0.wrapS = wallNormal0.wrapT = THREE.RepeatWrapping;
+        wallNormal0.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        wallNormal0.minFilter = THREE.LinearMipmapLinearFilter;
+        const wallNormals = [wallNormal0, wallNormal0, wallNormal0, wallNormal0];
+
+
+        const wallDisplacement0 = textureLoader.load('img/wall_displacement.jpg');
+        wallDisplacement0.wrapS = wallDisplacement0.wrapT = THREE.RepeatWrapping;
+        wallDisplacement0.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        wallDisplacement0.minFilter = THREE.LinearMipmapLinearFilter;
+        const wallDisplacements = [wallDisplacement0, wallDisplacement0, wallDisplacement0, wallDisplacement0];
 
         // Create the floor
         const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
-        const floorMaterial = new THREE.MeshPhongMaterial({map: floorTexture});
+        const floorMaterial = new THREE.MeshStandardMaterial({map: floorTexture});
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
 
         // Create the ceiling
         const ceilingGeometry = new THREE.PlaneGeometry(1000, 1000);
-        const ceilingMaterial = new THREE.MeshPhongMaterial({map: floorTexture});
+        const ceilingMaterial = new THREE.MeshStandardMaterial({map: floorTexture});
         const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
         ceiling.rotation.x = Math.PI / 2;
-        ceiling.position.y = wallHeight;
+        ceiling.position.y = wallSize;
         scene.add(ceiling);
 
         const outsideWallTexture = wallTexture0.clone()
         outsideWallTexture.repeat.set(100, 1)
 
         // Create walls
-        const outsideWallMaterial = new THREE.MeshPhongMaterial({map: outsideWallTexture});
+        const outsideWallMaterial = new THREE.MeshStandardMaterial({map: outsideWallTexture});
         // Outer walls (boundary)
-        createWall(0, wallHeight / 2, -500, 1000, wallHeight, wallThickness, outsideWallMaterial); // Front wall
-        createWall(0, wallHeight / 2, 500, 1000, wallHeight, wallThickness, outsideWallMaterial);  // Back wall
-        createWall(-500, wallHeight / 2, 0, wallThickness, wallHeight, 1000, outsideWallMaterial); // Left wall
-        createWall(500, wallHeight / 2, 0, wallThickness, wallHeight, 1000, outsideWallMaterial);  // Right wall
+        createWall(0, wallSize / 2, -500, 1000, wallSize, wallThickness, outsideWallMaterial); // Front wall
+        createWall(0, wallSize / 2, 500, 1000, wallSize, wallThickness, outsideWallMaterial);  // Back wall
+        createWall(-500, wallSize / 2, 0, wallThickness, wallSize, 1000, outsideWallMaterial); // Left wall
+        createWall(500, wallSize / 2, 0, wallThickness, wallSize, 1000, outsideWallMaterial);  // Right wall
 
 
         const pictureWallTexture = textureLoader.load('img/picture-wall.png');
         const tinaWallTexture = textureLoader.load('img/tina-wall.png');
         const sadgeWallTexture = textureLoader.load('img/sadge-wall.png');
 
-        const pictureWallMaterial = new THREE.MeshPhongMaterial({map: pictureWallTexture});
-        const tinaPictureWallMaterial = new THREE.MeshPhongMaterial({map: tinaWallTexture});
-        const sadgeMaterial = new THREE.MeshPhongMaterial({map: sadgeWallTexture});
-        addMonuments(pictureWallMaterial, tinaPictureWallMaterial, sadgeMaterial, wallHeight);
+        const pictureWallMaterial = new THREE.MeshStandardMaterial({map: pictureWallTexture});
+        const tinaPictureWallMaterial = new THREE.MeshStandardMaterial({map: tinaWallTexture});
+        const sadgeMaterial = new THREE.MeshStandardMaterial({map: sadgeWallTexture});
+        addMonuments(pictureWallMaterial, tinaPictureWallMaterial, sadgeMaterial, wallSize);
 
 
         const loader = new SVGLoader();
@@ -202,16 +196,22 @@
                         const length = Math.sqrt(dx * dx + dz * dz);
                         const angle = Math.atan2(dz, dx);
 
-                        const geometry = new THREE.BoxGeometry(length, wallHeight, 1); // Scale as needed
-                        const tex = wallTextures[idx % 4].clone();
-                        tex.repeat.set(length/wallHeight, 1);
+                        const geometry = new THREE.BoxGeometry(length, wallSize, 1);
+                        const tex = wallTextures[idx % wallTextures.length].clone();
+                        tex.repeat.set(length/wallSize, 1);
+                        const nrm = wallNormals[idx % wallNormals.length].clone();
+                        nrm.repeat.set(length/wallSize, 1);
+                        const bumps = wallDisplacements[idx % wallDisplacements.length].clone();
+                        bumps.repeat.set(length/wallSize, 1);
 
-                        const mat = new THREE.MeshPhongMaterial({map: tex});
-                        const wall = new THREE.Mesh(geometry, mat);
+                        const faceMaterial = new THREE.MeshStandardMaterial({map: tex, normalMap: nrm, bumpMap: bumps});
+                        faceMaterial.wireframe = isWireframe;
+                        const sideMaterial = new THREE.MeshPhongMaterial({ color: 0xa98700 });
+                        const wall = new THREE.Mesh(geometry, [sideMaterial,sideMaterial,sideMaterial,sideMaterial,faceMaterial,faceMaterial]);
 
                         wall.position.set(
                             (p1.x + p2.x) / 2 - 265,
-                            wallHeight/2,
+                            wallSize/2,
                             -(p1.y + p2.y) / 2 + 130
                         );
                         wall.rotation.y = -angle;
@@ -227,6 +227,7 @@
                 console.error('Error loading SVG:', error);
             }
         );
+
 
         // Lock pointer on click
         document.addEventListener('click', function () {
@@ -301,6 +302,12 @@
         document.addEventListener('keyup', onKeyUp, false);
 
         window.addEventListener('resize', onWindowResize, false);
+
+        scene.traverse(function (child) {
+            if (child.isMesh) {
+                child.material.wireframe = isWireframe;
+            }
+        });
     }
 
     function onWindowResize() {
@@ -324,7 +331,7 @@
     audioLoader.load('sfx/music.ogg', function(buffer) {
         backgroundMusic.setBuffer(buffer);
         backgroundMusic.setLoop(true);
-        backgroundMusic.setVolume(0.6);
+        backgroundMusic.setVolume(0.3);
     });
 
     function animate() {
@@ -364,7 +371,6 @@
             scene.fog.density = lottaLite ? 0 : defaultFogginess;
 
             if (collisionDetection) {
-                // Collision detection
                 const cameraPosition = controls.getObject().position.clone();
                 const collisionSphereRadius = 1.5; // Adjust as needed
                 const sphere = new THREE.Sphere(cameraPosition, collisionSphereRadius);
