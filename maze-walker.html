@@ -13,7 +13,7 @@
             position: absolute;
             width: 100%;
             height: 100%;
-            background-color: rgba(255, 255, 255, 0.3);
+            background-color: rgba(128, 64, 64, 0.3);
         }
 
         #instructions {
@@ -28,7 +28,7 @@
             text-align: center;
             font-size: 20px;
             cursor: pointer;
-            color: #660044
+            color: #FFDD00;
         }
     </style>
 </head>
@@ -41,7 +41,7 @@
             Click to play
         </p>
         <p>
-            Move: WASD<br/>
+            Move: WASD (or arrows)<br/>
             Look: MOUSE<br/>
             Run super fast: F<br/>
             Interact: Space<br/>
@@ -65,12 +65,6 @@
       }
     }
 
-
-
-
-
-
-
 </script>
 
 <!-- Main script -->
@@ -82,6 +76,7 @@
     let scene, camera, renderer;
     let controls;
     let objects = [];
+    let ceiling;
 
     let moveForward = false;
     let moveBackward = false;
@@ -105,7 +100,10 @@
     const defaultFogginess = 0.03;
 
     const eyeHeight = wallSize / 2 + 1;
-    const mazeEndPoint = new THREE.Vector3(0, wallSize / 2, -140);
+
+    const zoffset = 140;
+
+    const mazeEndPoint = new THREE.Vector3(0, wallSize / 2, 0);
 
     let isDropping = false;
     let dropTargetY = eyeHeight;
@@ -114,8 +112,10 @@
         return false;
     }
     let dropSpeed = 10;
+    let dropAcceleration = 1.02;
     const maxDropDepth = 700.0;
     let isPaused = true;
+    let frameCounter = 0;
 
     init();
     //pause to allow textures to load before animating, removes some warnings in the console
@@ -127,8 +127,8 @@
         scene.background = new THREE.Color(0x000000);
         camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
 
-        camera.position.set(0, eyeHeight, 145); //player initial position
-        // camera.position.set(96, eyeHeight, -133); //player initial position for debugging (comment out later)
+        camera.position.set(0, eyeHeight, 285); //player initial position
+        // camera.position.set(0, eyeHeight,  30); //player initial position for debugging (comment out later)
 
         controls = new PointerLockControls(camera, document.body);
         scene.add(controls.getObject());
@@ -141,14 +141,14 @@
         scene.add(ambientLight);
 
         const overheadSpotlight = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
-        overheadSpotlight.position.set(0, wallSize * 3, -160);
-        overheadSpotlight.target.position.set(0, 0, -140);
+        overheadSpotlight.position.set(0, wallSize * 3, -20);
+        overheadSpotlight.target.position.set(0, 0, 0);
         scene.add(overheadSpotlight);
         scene.add(overheadSpotlight.target);
 
         const overheadSpotlight2 = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
-        overheadSpotlight2.position.set(0, wallSize * 3, -120);
-        overheadSpotlight2.target.position.set(0, 0, -140);
+        overheadSpotlight2.position.set(0, wallSize * 3, 20);
+        overheadSpotlight2.target.position.set(0, 0, 0);
         scene.add(overheadSpotlight2);
         scene.add(overheadSpotlight2.target);
 
@@ -175,23 +175,20 @@
 
 
         // Wall textures TODO REFACTOR
-        const wallTexture0 = textureLoader.load('img/wall_color.jpg');
-        wallTexture0.wrapS = wallTexture0.wrapT = THREE.RepeatWrapping;
-        wallTexture0.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        wallTexture0.minFilter = THREE.LinearMipmapLinearFilter;
-        const wallTextures = [wallTexture0, wallTexture0, wallTexture0, wallTexture0];
+        const wallTexture = textureLoader.load('img/wall_color.jpg');
+        wallTexture.wrapS = wallTexture.wrapT = THREE.RepeatWrapping;
+        wallTexture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        wallTexture.minFilter = THREE.LinearMipmapLinearFilter;
 
         const wallEdgeTexture = textureLoader.load('img/wall_edge.jpg');
         wallEdgeTexture.minFilter = THREE.LinearMipmapLinearFilter;
         const wallEdgeTextureNormal = textureLoader.load('img/wall_edge_normal.jpg');
         wallEdgeTextureNormal.minFilter = THREE.LinearMipmapLinearFilter;
 
-        const wallNormal0 = textureLoader.load('img/wall_normal.jpg');
-        wallNormal0.wrapS = wallNormal0.wrapT = THREE.RepeatWrapping;
-        wallNormal0.anisotropy = renderer.capabilities.getMaxAnisotropy();
-        wallNormal0.minFilter = THREE.LinearMipmapLinearFilter;
-        const wallNormals = [wallNormal0, wallNormal0, wallNormal0, wallNormal0];
-
+        const wallNormal = textureLoader.load('img/wall_normal.jpg');
+        wallNormal.wrapS = wallNormal.wrapT = THREE.RepeatWrapping;
+        wallNormal.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        wallNormal.minFilter = THREE.LinearMipmapLinearFilter;
 
         // Create the floor
         const floorGeometry = new THREE.PlaneGeometry(1000, 1000);
@@ -200,16 +197,23 @@
         floor.rotation.x = -Math.PI / 2;
         scene.add(floor);
 
-        const outsideWallTexture = wallTexture0.clone()
+        // Create the ceiling
+        ceiling = floor.clone();
+        ceiling.rotation.x = Math.PI / 2;
+        ceiling.position.y = wallSize;
+        scene.add(ceiling);
+
+
+        const outsideWallTexture = wallTexture.clone()
         outsideWallTexture.repeat.set(100, 1)
 
         // Create walls
         const outsideWallMaterial = new THREE.MeshStandardMaterial({map: outsideWallTexture});
         // Outer walls (boundary)
-        createWall(0, wallSize / 2, -500, 1000, wallSize, wallThickness, outsideWallMaterial); // Front wall
-        createWall(0, wallSize / 2, 500, 1000, wallSize, wallThickness, outsideWallMaterial);  // Back wall
-        createWall(-500, wallSize / 2, 0, wallThickness, wallSize, 1000, outsideWallMaterial); // Left wall
-        createWall(500, wallSize / 2, 0, wallThickness, wallSize, 1000, outsideWallMaterial);  // Right wall
+        createWall(0, wallSize / 2, -400, 800, wallSize, wallThickness, outsideWallMaterial); // Front wall
+        createWall(0, wallSize / 2, 400, 800, wallSize, wallThickness, outsideWallMaterial);  // Back wall
+        createWall(-400, wallSize / 2, 0, wallThickness, wallSize, 800, outsideWallMaterial); // Left wall
+        createWall(400, wallSize / 2, 0, wallThickness, wallSize, 800, outsideWallMaterial);  // Right wall
 
         addMonuments(
             new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall.jpg')}),
@@ -246,9 +250,9 @@
                         const angle = Math.atan2(dz, dx);
 
                         const geometry = new THREE.BoxGeometry(length, wallSize, 1);
-                        const tex = wallTextures[idx % wallTextures.length].clone();
+                        const tex = wallTexture.clone();
                         tex.repeat.set(length / wallSize, 1);
-                        const nrm = wallNormals[idx % wallNormals.length].clone();
+                        const nrm = wallNormal.clone();
                         nrm.repeat.set(length / wallSize, 1);
 
                         const faceMaterial = new THREE.MeshStandardMaterial({map: tex, normalMap: nrm});
@@ -261,7 +265,7 @@
                         wall.position.set(
                             (p1.x + p2.x) / 2 - 265,
                             wallSize / 2,
-                            -(p1.y + p2.y) / 2 + 130
+                            -(p1.y + p2.y) / 2 + 265
                         );
                         wall.rotation.y = -angle;
                         scene.add(wall);
@@ -304,6 +308,7 @@
             moveLeft = false;
             moveBackward = false;
             moveRight = false;
+            backgroundMusic.pause();
             footsteps.setVolume(0.0);
             blocker.style.display = 'block';
             instructions.style.display = '';
@@ -376,6 +381,9 @@
                     superfast = false;
                     isWireframe = false;
                     reachedEnd = false;
+                    footsteps.stop();
+                    footsteps.playbackRate = 1.00;
+                    footsteps.play();
                     updateMaterialWireframe();
                     break;
                 case 'KeyC':
@@ -415,13 +423,12 @@
     function initiateDrop() {
         isDropping = true;
         footsteps.stop();
-        controls.getObject().children[0].rotation.x = THREE.MathUtils.degToRad(89);
+        crumbleSound.play();
         moveLeft = false;
         moveBackward = false;
         moveRight = false;
         moveForward = false;
         dropTargetY = camera.position.y - maxDropDepth;
-
     }
 
     function onWindowResize() {
@@ -435,31 +442,24 @@
     let bobbingSpeed = defaultBobbingSpeed; // How fast the bobbing oscillates
     let bobbingAmount = defaultBobbingAmount; // How much the camera bobs
 
+    const audioLoader = new THREE.AudioLoader();
 
     const listener = new THREE.AudioListener();
     camera.add(listener);
 
-    const backgroundMusic = new THREE.Audio(listener);
-    const footsteps = new THREE.Audio(listener);
-    const switchSound = new THREE.Audio(listener);
-
-    const audioLoader = new THREE.AudioLoader();
-
-    audioLoader.load('sfx/music.ogg', function (buffer) {
-        backgroundMusic.setBuffer(buffer);
-        backgroundMusic.setLoop(true);
-        backgroundMusic.setVolume(0.3);
-    });
-    audioLoader.load('sfx/footsteps.ogg', function (buffer) {
-        footsteps.setBuffer(buffer);
-        footsteps.setLoop(true);
-        footsteps.setVolume(0.0);
-    });
-    audioLoader.load('sfx/switch.ogg', function (buffer) {
-        switchSound.setBuffer(buffer);
-        switchSound.setLoop(false);
-        switchSound.setVolume(1.0);
-    });
+    const loadAudio = function (opt) {
+        const audio = new THREE.Audio(listener);
+        audioLoader.load('sfx/'+ opt.file, function (buffer) {
+            audio.setBuffer(buffer);
+            audio.setLoop(opt.loop);
+            audio.setVolume(opt.volume);
+        });
+        return audio;
+    }
+    const backgroundMusic = loadAudio({file: 'background.ogg', loop: true, volume: 0.5});
+    const footsteps = loadAudio({file: 'footsteps.ogg', loop: true, volume:0.0});
+    const switchSound = loadAudio({file: 'switch.ogg', loop: false, volume: 1.0});
+    const crumbleSound = loadAudio({file: 'crumble.ogg', loop: false, volume: 1.0});
 
     function animate() {
         requestAnimationFrame(animate);
@@ -475,6 +475,9 @@
 
         const time = performance.now();
         const delta = (time - prevTime) / 1000;
+        if (isPaused && frameCounter>100) return;
+        frameCounter++;
+
         if (!isDropping) {
             if (controls.isLocked === true) {
                 // Apply friction
@@ -535,8 +538,11 @@
             }
         } else {
             if (camera.position.y > dropTargetY) {
-                dropSpeed = dropSpeed * 1.01;
+                // controls.getObject().rotation.x = (1 - (Math.max(0, camera.position.y) / eyeHeight))  * (Math.PI / 2);
+                dropSpeed = dropSpeed * dropAcceleration;
                 camera.position.y -= dropSpeed * delta / 1000;
+            } else {
+                scene.remove(ceiling);
             }
         }
 
@@ -551,7 +557,7 @@
         objects.push(wall);
     }
 
-    function addMonuments(material, tinaMaterial, sadgeMaterial, sofiaMat, sofiDaddyMat, mummyMat, ellieMat, pitoMat, madTina) {
+    function addMonuments(daddyMat, tinaMat, sadgeMat, sofiaMat, sofiDaddyMat, mummyMat, ellieMat, pitoMat, madTina) {
         function addMonument(mat, x, z) {
             const wallThickness = 0.2;
             const wall = new THREE.Mesh(new THREE.BoxGeometry(wallSize, wallSize, wallThickness), mat);
@@ -559,17 +565,16 @@
             scene.add(wall);
             objects.push(wall);
         }
-
-        addMonument(material, 0, -139.9);
-        addMonument(tinaMaterial, 0, -140.1);
-        addMonument(sadgeMaterial, 241, 100);
-        addMonument(sofiaMat, -190, -159);
-        addMonument(sofiDaddyMat, 66, 14.9);
-        addMonument(mummyMat, -110, -306);
-        addMonument(pitoMat, 80, -399);
-        addMonument(ellieMat, -158, -254);
-        addMonument(madTina, -15, 95);
-        addMonument(material, 97, -129);
+        addMonument(daddyMat, 0, 0.1);
+        addMonument(tinaMat, 0, -0.1);
+        addMonument(sadgeMat, 241, 95 + zoffset);
+        addMonument(sofiaMat, -190, -164 + zoffset);
+        addMonument(sofiDaddyMat, 66, 10 + zoffset);
+        addMonument(mummyMat, -110, -311 + zoffset);
+        addMonument(pitoMat, 80, -404 + zoffset);
+        addMonument(ellieMat, -158, -259 + zoffset);
+        addMonument(madTina, -15, 90 + zoffset);
+        addMonument(daddyMat, 97, -134 + zoffset);
     }
 </script>
 </body>
