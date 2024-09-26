@@ -8,9 +8,52 @@
             margin: 0;
             overflow: hidden;
         }
+
+        #blocker {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        #instructions {
+            width: 100%;
+            height: 100%;
+
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+
+            text-align: center;
+            font-size: 20px;
+            cursor: pointer;
+            color: #660044
+        }
     </style>
 </head>
 <body>
+
+
+<div id="blocker">
+    <div id="instructions">
+        <p style="font-size:36px">
+            Click to play
+        </p>
+        <p>
+            Move: WASD<br/>
+            Look: MOUSE<br/>
+            Run super fast: F<br/>
+            Interact: Space<br/>
+            Lights: L<br/>
+            Wireframe: M<br/>
+            Collision detection: C<br/>
+            Reset toggles: R<br/>
+            Pause: Esc<br/>
+        </p>
+    </div>
+</div>
+
 <!-- Import Map -->
 <script type="importmap">
    {
@@ -56,7 +99,7 @@
     const wallSize = 10;
     const wallThickness = 0.5;
     const defaultSpeed = 150;
-    const defaultLightRange = 40;
+    const defaultLightRange = 50;
     const defaultBobbingSpeed = 12;
     const defaultBobbingAmount = 0.6;
     const defaultFogginess = 0.03;
@@ -70,11 +113,13 @@
     let inCloseProximityOfEnd = function () {
         return false;
     }
-    let dropSpeed = 0;
+    let dropSpeed = 10;
     const maxDropDepth = 700.0;
-
+    let isPaused = true;
 
     init();
+    //pause to allow textures to load before animating, removes some warnings in the console
+    // await new Promise(r => setTimeout(r, 500));
     animate();
 
     function init() {
@@ -82,13 +127,14 @@
         scene.background = new THREE.Color(0x000000);
         camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
 
-        camera.position.set(-20, eyeHeight, 85); //player initial position
+        camera.position.set(0, eyeHeight, 145); //player initial position
+        // camera.position.set(96, eyeHeight, -133); //player initial position for debugging (comment out later)
 
         controls = new PointerLockControls(camera, document.body);
         scene.add(controls.getObject());
 
         // Add light (candle flame) to the controls object
-        const light = new THREE.PointLight(0xffcc66, 1, defaultLightRange, 1);
+        const light = new THREE.PointLight(0xffcc66, 1, defaultLightRange, 3);
         controls.getObject().add(light);
 
         const ambientLight = new THREE.AmbientLight(0x550044, 0.4);
@@ -231,10 +277,14 @@
             }
         );
 
+        const blocker = document.getElementById('blocker');
+        const instructions = document.getElementById('instructions');
 
-        // Lock pointer on click
-        document.addEventListener('click', function () {
+        blocker.addEventListener('click', function () {
+
             if (!controls.isLocked) {
+                isPaused = false;
+                prevTime = performance.now();
                 controls.lock();
             }
             if (!backgroundMusic.isPlaying) {
@@ -242,6 +292,23 @@
                 footsteps.play();
             }
         });
+
+        controls.addEventListener('lock', function () {
+            instructions.style.display = 'none';
+            blocker.style.display = 'none';
+        });
+
+        controls.addEventListener('unlock', function () {
+            isPaused = true;
+            moveForward = false;
+            moveLeft = false;
+            moveBackward = false;
+            moveRight = false;
+            footsteps.setVolume(0.0);
+            blocker.style.display = 'block';
+            instructions.style.display = '';
+        });
+
 
         // Movement controls
         const onKeyDown = function (event) {
@@ -266,7 +333,7 @@
             }
         };
 
-        const updateMaterialWireframe = function (){
+        const updateMaterialWireframe = function () {
             scene.traverse(function (child) {
                 if (child.isMesh) {
                     if (Array.isArray(child.material)) {
@@ -353,7 +420,6 @@
         moveBackward = false;
         moveRight = false;
         moveForward = false;
-        dropSpeed = 10;
         dropTargetY = camera.position.y - maxDropDepth;
 
     }
@@ -397,7 +463,6 @@
 
     function animate() {
         requestAnimationFrame(animate);
-
 
         function checkReachedEnd() {
             if (reachedEnd) return true;
@@ -504,6 +569,7 @@
         addMonument(pitoMat, 80, -399);
         addMonument(ellieMat, -158, -254);
         addMonument(madTina, -15, 95);
+        addMonument(material, 97, -129);
     }
 </script>
 </body>
