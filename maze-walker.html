@@ -46,9 +46,6 @@
             Run super fast: F<br/>
             Interact: Space<br/>
             Lights: L<br/>
-            Wireframe: M<br/>
-            Collision detection: C<br/>
-            Reset toggles: R<br/>
             Pause: Esc<br/>
         </p>
     </div>
@@ -65,7 +62,12 @@
       }
     }
 
+
+
 </script>
+
+<!--This file will be present on the live server so devtools are disabled-->
+<script src="./devmode.js" defer></script>
 
 <!-- Main script -->
 <script type="module">
@@ -114,6 +116,10 @@
     const maxDropDepth = 700.0;
     let isPaused = true;
     let frameCounter = 0;
+
+    if (window.devMode === undefined){
+        window.devMode = true;
+    }
 
     init();
     //pause to allow textures to load before animating, removes some warnings in the console
@@ -371,21 +377,27 @@
                     break;
 
                 case 'KeyL':
-                    lottaLite = !lottaLite;
+                    if (devMode) {
+                        lottaLite = !lottaLite;
+                    }
                     break;
                 case 'KeyR':
-                    lottaLite = false;
-                    collisionDetection = true;
-                    superfast = false;
-                    isWireframe = false;
-                    reachedEnd = false;
-                    footsteps.stop();
-                    footsteps.playbackRate = 1.00;
-                    footsteps.play();
-                    updateMaterialWireframe();
+                    if (devMode) {
+                        lottaLite = false;
+                        collisionDetection = true;
+                        superfast = false;
+                        isWireframe = false;
+                        reachedEnd = false;
+                        footsteps.stop();
+                        footsteps.playbackRate = 1.00;
+                        footsteps.play();
+                        updateMaterialWireframe();
+                    }
                     break;
                 case 'KeyC':
-                    collisionDetection = !collisionDetection;
+                    if (devMode) {
+                        collisionDetection = !collisionDetection;
+                    }
                     break;
                 case 'KeyF':
                     superfast = !superfast;
@@ -396,15 +408,19 @@
                     footsteps.play();
                     break;
                 case 'KeyM' :
-                    isWireframe = !isWireframe;
-                    updateMaterialWireframe();
+                    if (devMode) {
+                        isWireframe = !isWireframe;
+                        updateMaterialWireframe();
+                    }
                     break;
                 case 'Space' :
                     if (!isDropping && inCloseProximityOfEnd()) {
                         initiateDrop();
                     } else {
-                        const pos = controls.getObject().position;
-                        console.log("x=", pos.x, ", z=", pos.z);
+                        if (devMode){
+                            const pos = controls.getObject().position;
+                            console.log("x=", pos.x, ", z=", pos.z);
+                        }
                     }
             }
         };
@@ -447,7 +463,7 @@
 
     const loadAudio = function (opt) {
         const audio = new THREE.Audio(listener);
-        audioLoader.load('sfx/'+ opt.file, function (buffer) {
+        audioLoader.load('sfx/' + opt.file, function (buffer) {
             audio.setBuffer(buffer);
             audio.setLoop(opt.loop);
             audio.setVolume(opt.volume);
@@ -455,7 +471,7 @@
         return audio;
     }
     const backgroundMusic = loadAudio({file: 'background.ogg', loop: true, volume: 0.5});
-    const footsteps = loadAudio({file: 'footsteps.ogg', loop: true, volume:0.0});
+    const footsteps = loadAudio({file: 'footsteps.ogg', loop: true, volume: 0.0});
     const switchSound = loadAudio({file: 'switch.ogg', loop: false, volume: 1.0});
     const crumbleSound = loadAudio({file: 'crumble.ogg', loop: false, volume: 1.0});
 
@@ -473,7 +489,7 @@
 
         const time = performance.now();
         const delta = (time - prevTime) / 1000;
-        if (isPaused && frameCounter>100) return;
+        if (isPaused && frameCounter > 100) return;
         frameCounter++;
 
         if (!isDropping) {
@@ -563,6 +579,7 @@
             scene.add(wall);
             objects.push(wall);
         }
+
         addMonument(daddyMat, 0, 0.1);
         addMonument(tinaMat, 0, -0.1);
         addMonument(sadgeMat, 241, 235);
