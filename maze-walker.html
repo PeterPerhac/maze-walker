@@ -419,7 +419,7 @@
                     } else {
                         if (devMode){
                             const pos = controls.getObject().position;
-                            console.log("x=", pos.x, ", z=", pos.z);
+                            console.log("x,z=", pos.x, pos.z);
                         }
                     }
             }
@@ -552,7 +552,6 @@
             }
         } else {
             if (camera.position.y > dropTargetY) {
-                // controls.getObject().rotation.x = (1 - (Math.max(0, camera.position.y) / eyeHeight))  * (Math.PI / 2);
                 dropSpeed = dropSpeed * dropAcceleration;
                 camera.position.y -= dropSpeed * delta / 1000;
             } else {

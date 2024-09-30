@@ -16,7 +16,7 @@ The game is a single HTML page with all the code in it. Load the html page in yo
 
 -----
 
-[Run around and explore.](https://devproltd.co.uk/maze-walker/maze-walker.html) The goal is to reach the centre of the maze and _interact_ with what you find there.
+[Run around and explore.](https://devproltd.co.uk/maze-walker/maze-walker.html) The goal is to reach the centre of the maze and _interact_ with what you find there. Hint: The portraits scattered around the maze are there to help you.
 
 
 ![Lights are out, you only hold a candle in your hands](./site/maze-candlelit.jpg)
