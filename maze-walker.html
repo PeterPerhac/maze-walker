@@ -64,6 +64,13 @@
 
 
 
+
+
+
+
+
+
+
 </script>
 
 <!--This file will be present on the live server so devtools are disabled-->
@@ -75,10 +82,10 @@
     import {PointerLockControls} from 'three/examples/jsm/controls/PointerLockControls.js';
     import {SVGLoader} from 'three/examples/jsm/loaders/SVGLoader.js';
 
-    let scene, camera, renderer;
-    let controls;
+    let scene, camera, renderer, textureLoader;
+    let controls, candle, ambientLight, tinaSpotlight;
     let objects = [];
-    let ceiling;
+    let ceiling, gallerySpotlight;
 
     let moveForward = false;
     let moveBackward = false;
@@ -96,10 +103,12 @@
     const wallSize = 10;
     const wallThickness = 0.5;
     const defaultSpeed = 150;
+    let speedMultiplier = 1.0;
     const defaultLightRange = 50;
     const defaultBobbingSpeed = 12;
     const defaultBobbingAmount = 0.6;
-    const defaultFogginess = 0.03;
+    const defaultFogginess = 0.02;
+    const defaultAmbientLightIntensity = 0.4;
 
     const eyeHeight = wallSize / 2 + 1;
 
@@ -107,17 +116,15 @@
 
     let isDropping = false;
     let dropTargetY = eyeHeight;
-    let reachedEnd = false;
-    let inCloseProximityOfEnd = function () {
-        return false;
-    }
+    let reachedRoom, nearEnd, reachedEnd = false;
+    let inCloseProximityOfEnd = false;
     let dropSpeed = 10;
     let dropAcceleration = 1.02;
     const maxDropDepth = 700.0;
     let isPaused = true;
     let frameCounter = 0;
 
-    if (window.devMode === undefined){
+    if (window.devMode === undefined) {
         window.devMode = true;
     }
 
@@ -132,38 +139,43 @@
         camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
 
         camera.position.set(0, eyeHeight, 285); //player initial position
-        // camera.position.set(0, eyeHeight,  30); //player initial position for debugging (comment out later)
+
+        if (devMode) {
+            camera.position.set(0, eyeHeight, -100); //player initial position for debugging (comment out later)
+            camera.rotation.y = -Math.PI;
+        }
 
         controls = new PointerLockControls(camera, document.body);
         scene.add(controls.getObject());
 
         // Add light (candle flame) to the controls object
-        const light = new THREE.PointLight(0xffcc66, 1, defaultLightRange, 3);
-        controls.getObject().add(light);
+        candle = new THREE.PointLight(0xffaa33, 1, defaultLightRange, 3);
+        controls.getObject().add(candle);
 
-        const ambientLight = new THREE.AmbientLight(0x550044, 0.4);
+        ambientLight = new THREE.AmbientLight(0x330055, defaultAmbientLightIntensity);
         scene.add(ambientLight);
 
-        const overheadSpotlight = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
-        overheadSpotlight.position.set(0, wallSize * 3, -20);
-        overheadSpotlight.target.position.set(0, 0, 0);
-        scene.add(overheadSpotlight);
-        scene.add(overheadSpotlight.target);
+        tinaSpotlight = new THREE.SpotLight(0x0066ff, 1, 80, Math.PI / 4, 0.3, 0.1);
+        tinaSpotlight.position.set(0, wallSize - 1, -60);
+        tinaSpotlight.target.position.set(0, eyeHeight, 0);
+        tinaSpotlight.castShadow = true;
+        scene.add(tinaSpotlight);
+        scene.add(tinaSpotlight.target);
 
-        const overheadSpotlight2 = new THREE.SpotLight(0x0066ff, 2, 150, Math.PI / 4, 0.5);
-        overheadSpotlight2.position.set(0, wallSize * 3, 20);
-        overheadSpotlight2.target.position.set(0, 0, 0);
-        scene.add(overheadSpotlight2);
-        scene.add(overheadSpotlight2.target);
+        gallerySpotlight = new THREE.SpotLight(0xffffff, 1.0, 85, Math.PI / 4, 0.1, 0.1);
+        gallerySpotlight.position.set(0, wallSize - 1, 20);
+        gallerySpotlight.target.position.set(0, wallSize, 75);
+        gallerySpotlight.castShadow = true;
 
         scene.fog = new THREE.FogExp2(0x000000, defaultFogginess);
 
         renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
 
         document.body.appendChild(renderer.domElement);
 
-        const textureLoader = new THREE.TextureLoader();
+        textureLoader = new THREE.TextureLoader();
 
         // Floor texture
         const floorTexture = textureLoader.load('img/ground_color.jpg');
@@ -199,6 +211,7 @@
         const floorMaterial = new THREE.MeshStandardMaterial({map: floorTexture, normalMap: floorNormal});
         const floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
         scene.add(floor);
 
         // Create the ceiling
@@ -219,17 +232,7 @@
         createWall(-400, wallSize / 2, 0, wallThickness, wallSize, 800, outsideWallMaterial); // Left wall
         createWall(400, wallSize / 2, 0, wallThickness, wallSize, 800, outsideWallMaterial);  // Right wall
 
-        addMonuments(
-            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall.jpg')}),
-            new THREE.MeshStandardMaterial({map: textureLoader.load('img/tina-wall.jpg')}),
-            new THREE.MeshStandardMaterial({map: textureLoader.load('img/sadge-wall.jpg')}),
-            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-sofia.jpg')}),
-            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-sofia-daddy.jpg')}),
-            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-mummy.jpg')}),
-            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-ellie.jpg')}),
-            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-pito.jpg')}),
-            new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-tina-mad.jpg')})
-        );
+        addMonuments();
 
 
         const loader = new SVGLoader();
@@ -272,6 +275,8 @@
                             -(p1.y + p2.y) / 2 + 265
                         );
                         wall.rotation.y = -angle;
+                        wall.castShadow = true;
+                        wall.receiveShadow = true;
                         scene.add(wall);
                         objects.push(wall);
                     });
@@ -383,11 +388,19 @@
                     break;
                 case 'KeyR':
                     if (devMode) {
+                        ambientLight.intensity = defaultAmbientLightIntensity;
+                        tinaSpotlight.intensity = 1.0;
+                        scene.remove(gallerySpotlight);
+                        scene.remove(gallerySpotlight.target);
+                        controls.getObject().add(candle);
                         lottaLite = false;
                         collisionDetection = true;
                         superfast = false;
+                        speedMultiplier = 1.0;
                         isWireframe = false;
                         reachedEnd = false;
+                        nearEnd = false;
+                        reachedRoom = false;
                         footsteps.stop();
                         footsteps.playbackRate = 1.00;
                         footsteps.play();
@@ -414,10 +427,10 @@
                     }
                     break;
                 case 'Space' :
-                    if (!isDropping && inCloseProximityOfEnd()) {
+                    if (!isDropping && inCloseProximityOfEnd(20)) {
                         initiateDrop();
                     } else {
-                        if (devMode){
+                        if (devMode) {
                             const pos = controls.getObject().position;
                             console.log("x,z=", pos.x, pos.z);
                         }
@@ -429,8 +442,8 @@
         document.addEventListener('keyup', onKeyUp, false);
 
         window.addEventListener('resize', onWindowResize, false);
-        inCloseProximityOfEnd = function () {
-            return mazeEndPoint.distanceTo(controls.getObject().position) < 10;
+        inCloseProximityOfEnd = function (distance) {
+            return mazeEndPoint.distanceTo(controls.getObject().position) < distance;
         }
     }
 
@@ -473,6 +486,7 @@
     const backgroundMusic = loadAudio({file: 'background.ogg', loop: true, volume: 0.5});
     const footsteps = loadAudio({file: 'footsteps.ogg', loop: true, volume: 0.0});
     const switchSound = loadAudio({file: 'switch.ogg', loop: false, volume: 1.0});
+    const blowOutCandleSound = loadAudio({file: 'breath.ogg', loop: false, volume: 0.7});
     const crumbleSound = loadAudio({file: 'crumble.ogg', loop: false, volume: 1.0});
 
     function animate() {
@@ -480,9 +494,24 @@
 
         function checkReachedEnd() {
             if (reachedEnd) return true;
-            reachedEnd = inCloseProximityOfEnd();
-            if (reachedEnd) {
+            if (!reachedEnd && inCloseProximityOfEnd(10)) {
+                reachedEnd = true;
                 switchSound.play();
+                controls.getObject().remove(candle);
+                ambientLight.intensity = 0.15;
+                tinaSpotlight.intensity = 0.2;
+                scene.add(gallerySpotlight);
+                scene.add(gallerySpotlight.target);
+            }
+            if (!nearEnd && inCloseProximityOfEnd(35)) {
+                nearEnd = true;
+                blowOutCandleSound.play();
+                controls.getObject().remove(candle);
+            } else {
+                if (!reachedRoom && inCloseProximityOfEnd(90)) {
+                    reachedRoom = true;
+                    // TODO do something when player enters  room
+                }
             }
             return reachedEnd;
         }
@@ -491,6 +520,10 @@
         const delta = (time - prevTime) / 1000;
         if (isPaused && frameCounter > 100) return;
         frameCounter++;
+
+        function inRoom(pos){
+            return pos.x > -52 && pos.x < 52 && pos.z > -85 && pos.z < 85;
+        }
 
         if (!isDropping) {
             if (controls.isLocked === true) {
@@ -503,7 +536,9 @@
                 direction.x = Number(moveRight) - Number(moveLeft);
                 direction.normalize(); // Ensure consistent movement speed
 
-                const speed = superfast ? 1000 : defaultSpeed;
+                const pos = controls.getObject().position;
+                speedMultiplier = inRoom(pos) && (!reachedEnd) ? Math.max(0.33, Math.min(1.0, Math.abs(pos.z - mazeEndPoint.z) / 50)) : 1.0;
+                const speed = superfast ? 1000 : defaultSpeed * speedMultiplier;
 
                 // Accelerate in the direction of movement
                 if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
@@ -522,9 +557,9 @@
                 controls.getObject().position.y = eyeHeight + bobbingOffset;
 
                 checkReachedEnd();
-                const lightuptheshow = lottaLite || reachedEnd;
-                controls.getObject().children[0].distance = lightuptheshow ? 0 : defaultLightRange;
-                scene.fog.density = lightuptheshow ? 0 : defaultFogginess;
+                const lightuptheshow = lottaLite || isDropping;
+                candle.distance = lightuptheshow ? 0 : defaultLightRange;
+                scene.fog.density = (lightuptheshow || reachedEnd) ? 0 : defaultFogginess;
 
                 footsteps.setVolume(Math.min(0.5, Math.max(0, velocity.length()))); //don't make the footsteps sound ever louder than 0.5
 
@@ -556,6 +591,9 @@
                 camera.position.y -= dropSpeed * delta / 1000;
             } else {
                 scene.remove(ceiling);
+                lottaLite = true;
+                ambientLight.intensity = 1.0;
+                controls.getObject().add(candle);
             }
         }
 
@@ -570,25 +608,36 @@
         objects.push(wall);
     }
 
-    function addMonuments(daddyMat, tinaMat, sadgeMat, sofiaMat, sofiDaddyMat, mummyMat, ellieMat, pitoMat, madTina) {
-        function addMonument(mat, x, z) {
+    function addMonuments() {
+        function addMonument(mat, x, z, passthrough) {
             const wallThickness = 0.2;
             const wall = new THREE.Mesh(new THREE.BoxGeometry(wallSize, wallSize, wallThickness), mat);
             wall.position.set(x, wallSize / 2, z);
+            wall.castShadow = true;
             scene.add(wall);
-            objects.push(wall);
+            if (!passthrough) {
+                objects.push(wall);
+            }
         }
 
+        const daddyMat = new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall.jpg')});
+
         addMonument(daddyMat, 0, 0.1);
-        addMonument(tinaMat, 0, -0.1);
-        addMonument(sadgeMat, 241, 235);
-        addMonument(sofiaMat, -190, -24);
-        addMonument(sofiDaddyMat, 66, 150);
-        addMonument(mummyMat, -110, -171);
-        addMonument(pitoMat, 80, -264);
-        addMonument(ellieMat, -158, -119);
-        addMonument(madTina, -15, 230);
+        addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load('img/tina-wall.jpg')}), 0, -0.1, false);
+        addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load('img/sadge-wall.jpg')}), 241, 235, false);
+        addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-sofia.jpg')}), -190, -24, false);
+        addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-sofia-daddy.jpg')}), 66, 150, false);
+        addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-mummy.jpg')}), -110, -171, false);
+        addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-ellie.jpg')}), 80, -264, false);
+        addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-pito.jpg')}), -158, -119, false);
+        addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load('img/picture-wall-tina-mad.jpg')}), -15, 230, false);
         addMonument(daddyMat, 97, 6);
+
+        Array.from({length: 9}).forEach((_, n) => {
+                let path = 'img/gallery/family-' + (n + 1) + '.jpg';
+                addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load(path)}), 40 - (n * 10), 75, true);
+            }
+        )
     }
 </script>
 </body>
