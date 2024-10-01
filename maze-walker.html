@@ -118,6 +118,7 @@
     let isDropping = false;
     let dropTargetY = eyeHeight;
     let reachedRoom, nearEnd, reachedEnd = false;
+    let reachedEndFrame = 0;
     let inCloseProximityOfEnd = false;
     let dropSpeed = 10;
     let dropAcceleration = 1.02;
@@ -501,6 +502,7 @@
             if (reachedEnd) return true;
             if (!reachedEnd && inCloseProximityOfEnd(10)) {
                 reachedEnd = true;
+                reachedEndFrame = frameCounter;
                 switchSound.play();
                 heartbeat.stop();
                 backgroundMusic.stop();
@@ -546,7 +548,7 @@
                 direction.normalize(); // Ensure consistent movement speed
 
                 const pos = controls.getObject().position;
-                speedMultiplier = inRoom(pos) && (!reachedEnd) ? Math.max(0.33, Math.min(1.0, Math.abs(pos.z - mazeEndPoint.z) / 70)) : 1.0;
+                speedMultiplier = inRoom(pos) && (!reachedEnd ^ (frameCounter - reachedEndFrame < 150)) ? Math.max(0.2, Math.min(1.0, Math.abs(pos.z - mazeEndPoint.z) / 70)) : 1.0;
                 backgroundMusic.setVolume(Math.max(0.1,speedMultiplier/2));
 
                 const speed = superfast ? 1000 : defaultSpeed * speedMultiplier;
