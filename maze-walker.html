@@ -24,7 +24,7 @@
             background-color: rgba(0, 0, 0, 0.8);
         }
 
-        #click-to-play{
+        #click-to-play {
             cursor: pointer;
         }
 
@@ -100,6 +100,9 @@
         "three/examples/jsm/utils/BufferGeometryUtils.js": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/utils/BufferGeometryUtils.js"
       }
     }
+
+
+
 
 
 
@@ -528,7 +531,9 @@
             audio.setBuffer(buffer);
             audio.setLoop(opt.loop);
             audio.setVolume(opt.volume);
-            opt.onLoad(this);
+            if (opt.onLoad) {
+                opt.onLoad(this);
+            }
         });
         return audio;
     }
@@ -676,22 +681,16 @@
 
     function addPointLights() {
         function addLight(x, z) {
-            const pointLight = new THREE.PointLight(0xff7700, 0.5, 10, 2);
+            const pointLight = new THREE.PointLight(0xff7700, 0.7, 35, 5);
             pointLight.position.set(x, eyeHeight, z);
             scene.add(pointLight);
         }
 
-        //move the first one slightly to the back of the monument so it gets some light on its back side
-        addLight(0, 2.5);
         addLight(-5, 10);
-        addLight(-15, 20);
         addLight(-25, 30);
-        addLight(-35, 40);
         addLight(-45, 50);
         addLight(5, 10);
-        addLight(15, 20);
         addLight(25, 30);
-        addLight(35, 40);
         addLight(45, 50);
     }
 
@@ -728,7 +727,20 @@
 
         Array.from({length: 9}).forEach((_, n) => {
                 let path = 'img/gallery/family-' + (n + 1) + '.jpg';
-                addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load(path)}), 40 - (n * 10), 75, false);
+                addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load(path)}), 40 - (n * wallSize), 75, false);
+            }
+        )
+
+        const numTinaPhotos = 24;
+        Array.from({length: numTinaPhotos}).forEach((_, n) => {
+                let path = 'img/tina/tina-' + (n + 1) + '.jpg';
+                const picX = -(numTinaPhotos / 2 * wallSize) + (n * wallSize);
+                addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load(path)}), picX, -266, false);
+                if (n % 3 === 1) {
+                    const smolLite = new THREE.PointLight(0xffffff, 1, 35, 2);
+                    smolLite.position.set(picX, eyeHeight, -271);
+                    scene.add(smolLite);
+                }
             }
         )
     }
