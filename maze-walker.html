@@ -110,6 +110,8 @@
 
 
 
+
+
 </script>
 
 <!--This file will be present on the live server so devtools are disabled-->
@@ -132,7 +134,8 @@
     let objects = [];
     let ceiling, gallerySpotlight;
     let backgroundMusic;
-    let bgMusicLoaded = false;
+    let smolLites = [];
+    let smolLitesOn = false;
 
     let moveForward = false;
     let moveBackward = false;
@@ -207,8 +210,9 @@
         camera.position.set(0, eyeHeight, 285); //player initial position
 
         if (devMode) {
-            camera.position.set(0, eyeHeight, -100); //player initial position for debugging (comment out later)
-            camera.rotation.y = -Math.PI;
+            camera.position.set(15.714303361010888, eyeHeight, -223.64619135310448); //player initial position
+            // camera.position.set(0, eyeHeight, -100); //player initial position for debugging (comment out later)
+            // camera.rotation.y = -Math.PI;
         }
 
         controls = new PointerLockControls(camera, document.body);
@@ -552,7 +556,7 @@
     function animate() {
         requestAnimationFrame(animate);
 
-        function checkReachedEnd() {
+        function checkReachedEnd(playerPos) {
             if (reachedEnd) return true;
             if (!reachedEnd && inCloseProximityOfEnd(10)) {
                 reachedEnd = true;
@@ -574,12 +578,25 @@
                 breathSound.play();
                 controls.getObject().remove(candle);
             } else {
-                if (!reachedRoom && inRoom(controls.getObject().position)) {
+                if (!reachedRoom && inRoom(playerPos)) {
                     reachedRoom = true;
                     heartbeat.play();
                 }
             }
             return reachedEnd;
+        }
+
+        function checkTinaGallery(playerPos) {
+            const gallerySide = playerPos.z < -266;
+            if (gallerySide && !smolLitesOn) {
+                smolLitesOn = true;
+                smolLites.forEach((lite) => scene.add(lite));
+            } else {
+                if (!gallerySide && smolLites) {
+                    smolLitesOn = false;
+                    smolLites.forEach((lite) => scene.remove(lite));
+                }
+            }
         }
 
         const time = performance.now();
@@ -602,8 +619,9 @@
                 direction.x = Number(moveRight) - Number(moveLeft);
                 direction.normalize(); // Ensure consistent movement speed
 
-                const pos = controls.getObject().position;
-                speedMultiplier = inRoom(pos) && (!reachedEnd ^ (frameCounter - reachedEndFrame < 150)) ? Math.max(0.2, Math.min(1.0, Math.abs(pos.z - mazeEndPoint.z) / 70)) : 1.0;
+                const playerPos = controls.getObject().position;
+
+                speedMultiplier = inRoom(playerPos) && (!reachedEnd ^ (frameCounter - reachedEndFrame < 150)) ? Math.max(0.2, Math.min(1.0, Math.abs(playerPos.z - mazeEndPoint.z) / 70)) : 1.0;
                 backgroundMusic.setVolume(Math.max(0.1, speedMultiplier / 2));
 
                 const speed = superfast ? 1000 : defaultSpeed * speedMultiplier;
@@ -612,7 +630,7 @@
                 if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
                 if (moveLeft || moveRight) velocity.x -= direction.x * speed * delta;
 
-                const oldPosition = controls.getObject().position.clone();
+                const oldPosition = playerPos.clone();
                 const movement = new THREE.Vector3(-velocity.x * delta, 0, -velocity.z * delta);
                 controls.moveRight(movement.x);
                 controls.moveForward(movement.z);
@@ -620,9 +638,10 @@
                 // Apply bobbing effect if moving
                 bobbingTime += delta * bobbingSpeed;
                 const bobbingOffset = Math.sin(bobbingTime) * bobbingAmount * (Math.min(velocity.length(), 8) / 8);
-                controls.getObject().position.y = eyeHeight + bobbingOffset;
+                playerPos.y = eyeHeight + bobbingOffset;
 
-                checkReachedEnd();
+                checkReachedEnd(playerPos);
+                checkTinaGallery(playerPos);
                 const lightuptheshow = lottaLite || isDropping;
                 candle.distance = lightuptheshow ? 0 : defaultLightRange;
                 scene.fog.density = (lightuptheshow || reachedEnd) ? 0 : defaultFogginess;
@@ -630,7 +649,7 @@
                 footsteps.setVolume(Math.min(0.5, Math.max(0, velocity.length()))); //don't make the footsteps sound ever louder than 0.5
 
                 if (collisionDetection) {
-                    const cameraPosition = controls.getObject().position.clone();
+                    const cameraPosition = playerPos.clone();
                     const collisionSphereRadius = 2;
                     const sphere = new THREE.Sphere(cameraPosition, collisionSphereRadius);
                     let collision = false;
@@ -645,7 +664,7 @@
 
                     if (collision) {
                         // Revert to the old position if collision detected
-                        controls.getObject().position.copy(oldPosition);
+                        playerPos.copy(oldPosition);
                         velocity.set(0, 0, 0);
                     } else {
                         distanceWalked += movement.length();
@@ -737,9 +756,9 @@
                 const picX = -(numTinaPhotos / 2 * wallSize) + (n * wallSize);
                 addMonument(new THREE.MeshStandardMaterial({map: textureLoader.load(path)}), picX, -266, false);
                 if (n % 3 === 1) {
-                    const smolLite = new THREE.PointLight(0xffffff, 1, 35, 2);
-                    smolLite.position.set(picX, eyeHeight, -271);
-                    scene.add(smolLite);
+                    const smolLite = new THREE.PointLight(0xffffff, 1, 120, 3);
+                    smolLite.position.set(picX, eyeHeight, -280);
+                    smolLites.push(smolLite);
                 }
             }
         )
