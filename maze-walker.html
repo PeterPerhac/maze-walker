@@ -100,18 +100,6 @@
         "three/examples/jsm/utils/BufferGeometryUtils.js": "https://cdn.jsdelivr.net/npm/three@0.152.2/examples/jsm/utils/BufferGeometryUtils.js"
       }
     }
-
-
-
-
-
-
-
-
-
-
-
-
 </script>
 
 <!--This file will be present on the live server so devtools are disabled-->
@@ -611,6 +599,7 @@
         if (!isDropping) {
             if (controls.isLocked === true) {
                 // Apply friction
+                const playerPos = controls.getObject().position;
                 velocity.x -= velocity.x * 7.5 * delta;
                 velocity.z -= velocity.z * 7.5 * delta;
 
@@ -618,8 +607,6 @@
                 direction.z = Number(moveForward) - Number(moveBackward);
                 direction.x = Number(moveRight) - Number(moveLeft);
                 direction.normalize(); // Ensure consistent movement speed
-
-                const playerPos = controls.getObject().position;
 
                 speedMultiplier = inRoom(playerPos) && (!reachedEnd ^ (frameCounter - reachedEndFrame < 150)) ? Math.max(0.2, Math.min(1.0, Math.abs(playerPos.z - mazeEndPoint.z) / 70)) : 1.0;
                 backgroundMusic.setVolume(Math.max(0.1, speedMultiplier / 2));
