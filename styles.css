@@ -1,0 +1,52 @@
+#stats {
+    position: absolute;
+    width: 100%;
+    height: 3em;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.bigP {
+    font-size:36px;
+}
+
+#click-to-play {
+    cursor: pointer;
+    border: 1px #dd4400 solid;
+    padding: 20px;
+    -webkit-box-shadow: inset 0 0 20px #ee5500;
+    -moz-box-shadow: inset 0 0 20px #ee5500;
+    box-shadow: inset 0 0 20px #ee5500;
+}
+
+#stats-bar {
+    color: #dd4400;
+    padding: 10px;
+    font-family: sans-serif;
+}
+
+#stats-bar p {
+    margin: 0.5em;
+}
+
+#instructions {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+
+    text-align: center;
+    font-size: 20px;
+    color: #FFDD00;
+}
+
+#elapsed-seconds-wrapper {
+    float: left;
+}
+
+#distance-walked-wrapper {
+    float: right;
+}
