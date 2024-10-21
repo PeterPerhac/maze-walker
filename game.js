@@ -604,6 +604,12 @@ function addMonuments() {
     addMonument('img/sofia-2.jpg', 209, -74, true);
     addMonument('img/sofia-3.jpg', 225, -200, true);
 
+    addMonument('img/gallery/sofia-special-1.jpg', 33, 152, true);
+    addMonument('img/gallery/sofia-special-2.jpg', -47, 150, true);
+    addMonument('img/gallery/sofia-special-3.jpg', -143, -216, true);
+    addMonument('img/gallery/sofia-special-4.jpg', 47, -136, true);
+    addMonument('img/gallery/sofia-special-5.jpg', -45, -184, true);
+
     addMonument('img/picture-wall.jpg', 97, 6);
 
     Array.from({length: 9}).forEach((_, n) => {
