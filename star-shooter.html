@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>2D Shooter with Three.js</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+    let scene, camera, renderer;
+    let square, bullets = [], enemies = [];
+
+    const WIDTH = window.innerWidth;
+    const HEIGHT = window.innerHeight;
+
+    init();
+    animate();
+
+    function init() {
+        // 1) Scene
+        scene = new THREE.Scene();
+
+        // 2) Orthographic Camera
+        //    These values define the 'view volume':
+        //    left, right, top, bottom, near, far.
+        //    We'll map 0..WIDTH to left..right, 0..HEIGHT to bottom..top, so it feels like 2D pixel coords.
+        const left = 0;
+        const right = WIDTH;
+        const top = HEIGHT;
+        const bottom = 0;
+        const near = -1000;
+        const far = 1000;
+        camera = new THREE.OrthographicCamera(left, right, top, bottom, near, far);
+        camera.position.z = 10; // Move it “above” the scene
+
+        // 3) Renderer
+        renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(WIDTH, HEIGHT);
+        document.body.appendChild(renderer.domElement);
+
+        // 4) Create a "square" (player)
+        //    In Three.js, even 2D shapes are drawn as planes in 3D. We'll keep them front-facing.
+        const squareGeometry = new THREE.PlaneGeometry(50, 50); // 50x50
+        const squareMaterial = new THREE.MeshBasicMaterial({color: 0xff0000});
+        square = new THREE.Mesh(squareGeometry, squareMaterial);
+        square.position.set(WIDTH * 0.5, HEIGHT * 0.9, 0); // near top-center
+        scene.add(square);
+
+        // 5) Spawn some randomly moving enemies
+        for (let i = 0; i < 100; i++) {
+            const enemy = createEnemy();
+            enemy.position.x = Math.random() * WIDTH;
+            enemy.position.y = Math.random() * (HEIGHT * 0.5); // only in bottom half
+            enemy.userData.vx = (Math.random() - 0.5) * 4; // random horizontal speed
+            enemy.userData.vy = (Math.random() - 0.5) * 4; // random vertical speed
+            enemy.userData.isAlive = true;
+            scene.add(enemy);
+            enemies.push(enemy);
+        }
+
+        // 6) Listen for clicks or keyboard to "shoot"
+        window.addEventListener("keydown", onKeyDown);
+        // Alternatively: window.addEventListener("click", onShoot);
+
+        // 7) Handle window resize
+        window.addEventListener("resize", onWindowResize);
+    }
+
+    function onKeyDown(e) {
+        if (e.code === "Space") {
+            shootBullet();
+        }
+    }
+
+    function shootBullet() {
+        if (enemies.length === 0) return;
+        const targetEnemy = enemies[Math.floor(Math.random() * enemies.length)];
+        const bulletGeometry = new THREE.RingGeometry(3, 5, 32);
+        const bulletMaterial = new THREE.MeshBasicMaterial({color: 0xffff00});
+        const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+
+        // Position bullet at the square
+        bullet.position.set(square.position.x, square.position.y - 30, 0);
+
+        bullet.userData.targetEnemy = targetEnemy;
+
+        bullet.userData.initialEnergy = 1000;
+        bullet.userData.energy = bullet.userData.initialEnergy;
+        bullet.userData.energyDrain = Math.random() / 100;
+        bullet.userData.speed = 5;
+
+        scene.add(bullet);
+        bullets.push(bullet);
+    }
+
+    function createEnemy() {
+        const innerRadius = 15;
+        const outerRadius = 20;
+        const segments = 6;
+
+        const ringGeometry = new THREE.RingGeometry(innerRadius, outerRadius, segments);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            side: THREE.DoubleSide
+        });
+
+        return new THREE.Mesh(ringGeometry, ringMaterial);
+    }
+
+    function onWindowResize() {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        renderer.setSize(w, h);
+
+        // Update orthographicCamera:
+        camera.left = 0;
+        camera.right = w;
+        camera.top = h;
+        camera.bottom = 0;
+        camera.updateProjectionMatrix();
+    }
+
+    // Main loop
+    function animate() {
+        requestAnimationFrame(animate);
+
+        // 1) Update bullets
+        // bm1 - bookmark 1
+        for (let i = 0; i < bullets.length; i++) {
+            const bullet = bullets[i];
+            const enemy = bullet.userData.targetEnemy;
+            if (enemy) {
+                if (enemy.userData.isAlive) {
+                    const dx = enemy.position.x - bullet.position.x;
+                    const dy = enemy.position.y - bullet.position.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const vx = dx / dist;
+                    const vy = dy / dist;
+                    bullet.position.x += vx * bullet.userData.speed;
+                    bullet.position.y += vy * bullet.userData.speed;
+                    if (
+                        bullet.position.x < 0 || bullet.position.x > WIDTH ||
+                        bullet.position.y < 0 || bullet.position.y > HEIGHT
+                    ) {
+                        scene.remove(bullet);
+                        bullets.splice(i, 1);
+                        i--;
+                    }
+                } else {
+                    scene.remove(bullet);
+                    bullets.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        // 2) Update enemy positions
+        for (let i = 0; i < enemies.length; i++) {
+            const s = enemies[i];
+            s.position.x += s.userData.vx;
+            s.position.y += s.userData.vy;
+
+            // Bounce off edges or wrap around, or randomize direction
+            if (s.position.x < 0 || s.position.x > WIDTH) {
+                s.userData.vx = -s.userData.vx;
+            }
+            if (s.position.y < 0 || s.position.y > HEIGHT) {
+                s.userData.vy = -s.userData.vy;
+            }
+        }
+
+        // 3) Check for collisions (bullet vs enemy)
+        checkCollisions();
+
+        // 4) Render
+        renderer.render(scene, camera);
+    }
+
+    function checkCollisions() {
+        // Simple bounding-circle or bounding-box collision check
+        // For demonstration, let's do a bounding-circle approach:
+        const bulletRadius = 5;
+        const starRadius = 15; // approximate radius
+
+        // Nested loops
+        for (let i = 0; i < bullets.length; i++) {
+            for (let j = 0; j < enemies.length; j++) {
+                const bullet = bullets[i];
+                const enemy = enemies[j];
+                const dx = bullet.position.x - enemy.position.x;
+                const dy = bullet.position.y - enemy.position.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < bulletRadius + starRadius) {
+                    // Remove enemy and bullet
+                    enemy.userData.isAlive = false;
+                    scene.remove(bullet);
+                    scene.remove(enemy);
+                    bullets.splice(i, 1);
+                    enemies.splice(j, 1);
+                    i--;
+                    j--;
+                    break; // go to next bullet
+                }
+            }
+        }
+    }
+</script>
+</body>
+</html>
+
